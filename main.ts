@@ -144,7 +144,7 @@ interface WizardPluginSettings {
   autoReset: string;
   dataFile: string;
   wizardData: WizardCharacterData;
-  spellFolders: Record<string, string>; // Add this line
+  spellFolders: Record<string, string>;
 }
 
 export default class WizardSpellTrackerPlugin extends Plugin {
@@ -225,6 +225,7 @@ export default class WizardSpellTrackerPlugin extends Plugin {
       JSON.stringify(this.settings.wizardData, null, 2)
     );
   }
+
   async scanSpellFolders(): Promise<void> {
     const spells: WizardSpell[] = [];
     const cantrips: WizardSpell[] = [];
@@ -241,46 +242,47 @@ export default class WizardSpellTrackerPlugin extends Plugin {
         const folder = this.app.vault.getAbstractFileByPath(folderPath);
         if (!folder || !(folder instanceof TFolder)) continue;
         
-        let files: any[] = [];
+        let files: TAbstractFile[] = [];
         if (folder instanceof TFolder) {
           files = folder.children.filter(file => file.path.endsWith('.md'));
         } else {
           console.log("Not a valid folder");
-          return;
+          continue;
         }
           
         for (const file of files) {
           // Make sure file has the right properties before using them
           if (file && typeof file.basename === 'string' && typeof file.extension === 'string') {
-          // Extract spell name from filename
-          const name = file.basename;
-          
-          // Try to determine school by reading file content
-          let school = "Unknown";
-          try {
-            const content = await this.app.vault.read(file);
-            // Simple detection - you may want to improve this
-            const schoolMatches = content.match(/school of (.*?)[,\.\n]/i);
-            if (schoolMatches) {
-              school = schoolMatches[1].charAt(0).toUpperCase() + schoolMatches[1].slice(1);
+            // Extract spell name from filename
+            const name = file.basename;
+            
+            // Try to determine school by reading file content
+            let school = "Unknown";
+            try {
+              const content = await this.app.vault.read(file as any);
+              // Simple detection - you may want to improve this
+              const schoolMatches = content.match(/school of (.*?)[,\.\n]/i);
+              if (schoolMatches) {
+                school = schoolMatches[1].charAt(0).toUpperCase() + schoolMatches[1].slice(1);
+              }
+            } catch (e) {
+              console.log("Could not read spell file:", e);
             }
-          } catch (e) {
-            console.log("Could not read spell file:", e);
-          }
-          
-          // Create spell object
-          const spell: WizardSpell = {
-            name,
-            level,
-            school,
-            prepared: false
-          };
-          
-          // Add to appropriate array
-          if (level === 0) {
-            cantrips.push(spell);
-          } else {
-            spells.push(spell);
+            
+            // Create spell object
+            const spell: WizardSpell = {
+              name,
+              level,
+              school,
+              prepared: false
+            };
+            
+            // Add to appropriate array
+            if (level === 0) {
+              cantrips.push(spell);
+            } else {
+              spells.push(spell);
+            }
           }
         }
       } catch (e) {
@@ -293,7 +295,7 @@ export default class WizardSpellTrackerPlugin extends Plugin {
     this.settings.wizardData.cantripsKnown = cantrips;
     
     await this.saveSettings();
-  }}
+  }
 
   openSpellTracker(): void {
     const content = this.generateSpellTrackerMarkdown();
@@ -577,80 +579,6 @@ class WizardSpellTrackerSettingTab extends PluginSettingTab {
 
   display(): void {
     const { containerEl } = this;
-     // Add folder settings for each spell level
-     const spellLevels = [
-       ["cantrip", "Cantrips"],
-       ["level1", "Level 1 Spells"],
-       ["level2", "Level 2 Spells"],
-       ["level3", "Level 3 Spells"],
-       ["level4", "Level 4 Spells"],
-       ["level5", "Level 5 Spells"],
-       ["level6", "Level 6 Spells"],
-       ["level7", "Level 7 Spells"],
-       ["level8", "Level 8 Spells"],
-       ["level9", "Level 9 Spells"]
-     ];
-     
-     containerEl.createEl("h3", { text: "Spell Folders" });
-     
-     for (const [key, label] of spellLevels) {
-       new Setting(containerEl)
-         .setName(label)
-         .setDesc(`Select folder containing ${label.toLowerCase()}`)
-         .addDropdown(dropdown => {
-           // Add empty option
-           dropdown.addOption("", "-- Select Folder --");
-           
-           // Get all folders in the vault
-           const folders = this.getFolders("");
-           folders.forEach(folder => {
-             dropdown.addOption(folder, folder);
-           });
-           
-           return dropdown
-             .setValue(this.plugin.settings.spellFolders[key] || "")
-             .onChange(async (value) => {
-               this.plugin.settings.spellFolders[key] = value;
-               await this.plugin.saveSettings();
-             });
-         });
-     }
-     getFolders(path: string): string[] {
-      const folders: string[] = [];
-      const root = this.app.vault.getAbstractFileByPath(path);
-      
-      const addFolders = (folder: any, prefix: string = "") => {
-        if (!folder || !(folder instanceof TFolder)) return;
-        
-        const folderPath = prefix ? `${prefix}/${folder.name}` : folder.name;
-        folders.push(folderPath);
-        
-        if (folder.children) {
-          for (const child of folder.children) {
-            if (folder instanceof TFolder) {
-              addFolders(child, folderPath);
-            }
-          }
-        }
-      };
-      
-      if (path === "") {
-        // Get all top-level folders
-        const rootFolders = this.app.vault.adapter.list("")
-          .then(result => result.folders)
-          .catch(e => []);
-        
-        for (const folderPath of this.app.vault.getAllLoadedFiles()
-        .filter(f => f instanceof TFolder && f.parent?.path === "/")) {
-        addFolders(folderPath);
-      }
-      } else {
-        addFolders(root);
-      }
-      
-      return folders;
-    }
-    
     // Reset settings
     containerEl.empty();
     
@@ -702,6 +630,45 @@ class WizardSpellTrackerSettingTab extends PluginSettingTab {
           this.plugin.settings.wizardData.arcaneSubclass = value;
           await this.plugin.saveSettings();
         }));
+    
+    // Add folder settings for each spell level
+    const spellLevels = [
+      ["cantrip", "Cantrips"],
+      ["level1", "Level 1 Spells"],
+      ["level2", "Level 2 Spells"],
+      ["level3", "Level 3 Spells"],
+      ["level4", "Level 4 Spells"],
+      ["level5", "Level 5 Spells"],
+      ["level6", "Level 6 Spells"],
+      ["level7", "Level 7 Spells"],
+      ["level8", "Level 8 Spells"],
+      ["level9", "Level 9 Spells"]
+    ];
+    
+    containerEl.createEl("h3", { text: "Spell Folders" });
+    
+    for (const [key, label] of spellLevels) {
+      new Setting(containerEl)
+        .setName(label)
+        .setDesc(`Select folder containing ${label.toLowerCase()}`)
+        .addDropdown(dropdown => {
+          // Add empty option
+          dropdown.addOption("", "-- Select Folder --");
+          
+          // Get all folders in the vault
+          const folders = this.getFolders("");
+          folders.forEach(folder => {
+            dropdown.addOption(folder, folder);
+          });
+          
+          return dropdown
+            .setValue(this.plugin.settings.spellFolders[key] || "")
+            .onChange(async (value) => {
+              this.plugin.settings.spellFolders[key] = value;
+              await this.plugin.saveSettings();
+            });
+        });
+    }
         
     new Setting(containerEl)
       .setName("Reset All Data")
@@ -713,5 +680,37 @@ class WizardSpellTrackerSettingTab extends PluginSettingTab {
           await this.plugin.saveSettings();
           this.display();
         }));
+  }
+
+  getFolders(pathStr: string): string[] {
+    const folders: string[] = [];
+    const root = this.app.vault.getAbstractFileByPath(pathStr);
+    
+    const addFolders = (folder: TFolder | null, prefix: string = "") => {
+      if (!folder || !(folder instanceof TFolder)) return;
+      
+      const folderPath = prefix ? `${prefix}/${folder.name}` : folder.name;
+      folders.push(folderPath);
+      
+      if (folder.children) {
+        for (const child of folder.children) {
+          if (child instanceof TFolder) {
+            addFolders(child, folderPath);
+          }
+        }
+      }
+    };
+    
+    if (pathStr === "") {
+      // Get all top-level folders
+      for (const folderPath of this.app.vault.getAllLoadedFiles()
+        .filter(f => f instanceof TFolder && f.parent?.path === "/")) {
+        addFolders(folderPath as TFolder);
+      }
+    } else {
+      addFolders(root as TFolder);
+    }
+    
+    return folders;
   }
 }
