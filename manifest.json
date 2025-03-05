@@ -1,11 +1,11 @@
 {
-	"id": "sample-plugin",
-	"name": "Sample Plugin",
+	"id": "dnd-spellbook-plugin",
+	"name": "dnd-spellbook-plugin",
 	"version": "1.0.0",
 	"minAppVersion": "0.15.0",
 	"description": "Demonstrates some of the capabilities of the Obsidian API.",
 	"author": "Obsidian",
-	"authorUrl": "https://obsidian.md",
-	"fundingUrl": "https://obsidian.md/pricing",
+	"authorUrl": "Bruno",
+	"fundingUrl": "https://github.com/BrunoBicas/Obsidian-Wizard-Spell-Tracker-Plugin",
 	"isDesktopOnly": false
 }
