@@ -155,3 +155,82 @@ If your plugin does not need CSS, delete this file.
     white-space: nowrap;
     border: 0;
 }
+.dnd-spellbook-container {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    padding: 20px;
+    background-color: #f4f4f4;
+    border-radius: 8px;
+}
+
+.enhanced-spell-card {
+    background-color: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    padding: 15px;
+    transition: all 0.3s ease;
+}
+
+.enhanced-spell-card:hover {
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    transform: translateY(-3px);
+}
+
+.spell-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #e0e0e0;
+    padding-bottom: 10px;
+}
+
+.spell-name {
+    margin: 0;
+    font-weight: bold;
+    color: #333;
+}
+
+.spell-level {
+    background-color: #f0f0f0;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 0.8em;
+}
+
+.spell-content {
+    margin-bottom: 10px;
+}
+
+.spell-description {
+    color: #666;
+    font-size: 0.9em;
+}
+
+.spell-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.prepare-btn {
+    padding: 5px 10px;
+    border-radius: 4px;
+}
+
+.prepare-btn.prepared {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.prepare-btn.unprepared {
+    background-color: #f0f0f0;
+    color: #333;
+}
+
+.delete-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+}
