@@ -5,10 +5,12 @@ import {
 	Setting, 
 	WorkspaceLeaf, 
 	View, 
-	ItemView 
+	ItemView,
+  Notice
 } from 'obsidian';
 
 const SPELLBOOK_VIEW_TYPE = 'dnd-spellbook-view';
+const KNOWN_SPELLS_VIEW_TYPE = 'dnd-known-spells-view';
 
 interface SpellSlot {
 	level: number;
@@ -39,10 +41,63 @@ const DEFAULT_SETTINGS: DnDSpellbookSettings = {
 		{ level: 2, total: 0, used: 0 },
 		{ level: 3, total: 0, used: 0 },
 		{ level: 4, total: 0, used: 0 },
-		{ level: 5, total: 0, used: 0 }
+		{ level: 5, total: 0, used: 0 },
+    { level: 6, total: 0, used: 0 },
+    { level: 7, total: 0, used: 0 },
+    { level: 8, total: 0, used: 0 },
+    { level: 9, total: 0, used: 0 }
 	],
 	knownSpells: []
 };
+
+// Function to calculate spell slots based on class and level
+function calculateSpellSlots(characterClass: string, level: number): SpellSlot[] {
+  const slots: SpellSlot[] = [
+    { level: 1, total: 0, used: 0 },
+    { level: 2, total: 0, used: 0 },
+    { level: 3, total: 0, used: 0 },
+    { level: 4, total: 0, used: 0 },
+    { level: 5, total: 0, used: 0 },
+    { level: 6, total: 0, used: 0 },
+    { level: 7, total: 0, used: 0 },
+    { level: 8, total: 0, used: 0 },
+    { level: 9, total: 0, used: 0 }
+  ];
+
+  // Full casters: wizard, cleric, druid
+  if (characterClass === 'wizard' || characterClass === 'cleric' || characterClass === 'druid') {
+    if (level >= 1) slots[0].total = 2;
+    if (level >= 2) slots[0].total = 3;
+    if (level >= 3) { slots[0].total = 4; slots[1].total = 2; }
+    if (level >= 4) { slots[1].total = 3; }
+    if (level >= 5) { slots[0].total = 4; slots[1].total = 3; slots[2].total = 2; }
+    if (level >= 6) { slots[2].total = 3; }
+    if (level >= 7) { slots[3].total = 1; }
+    if (level >= 8) { slots[3].total = 2; }
+    if (level >= 9) { slots[3].total = 3; slots[4].total = 1; }
+    if (level >= 10) { slots[4].total = 2; }
+    if (level >= 11) { slots[5].total = 1; }
+    if (level >= 13) { slots[6].total = 1; }
+    if (level >= 15) { slots[7].total = 1; }
+    if (level >= 17) { slots[8].total = 1; }
+  }
+  // Half casters: paladin, ranger
+  else if (characterClass === 'paladin' || characterClass === 'ranger') {
+    // Half casters get spell slots at level 2
+    if (level >= 2) slots[0].total = 2;
+    if (level >= 3) slots[0].total = 3;
+    if (level >= 5) { slots[0].total = 4; slots[1].total = 2; }
+    if (level >= 7) slots[1].total = 3;
+    if (level >= 9) { slots[2].total = 2; }
+    if (level >= 11) slots[2].total = 3;
+    if (level >= 13) slots[3].total = 1;
+    if (level >= 15) slots[3].total = 2;
+    if (level >= 17) slots[3].total = 3;
+    if (level >= 19) slots[4].total = 1;
+  }
+
+  return slots;
+}
 
 class SpellbookView extends ItemView {
 	plugin: DnDSpellbookPlugin;
@@ -67,29 +122,48 @@ class SpellbookView extends ItemView {
 	async onOpen(): Promise<void> {
 		const container = this.containerEl.createDiv({ 
       cls: 'dnd-spellbook-container modern-spellbook-layout' 
-  });
+    });
     
+    // Add scrollable content wrapper
+    const scrollContainer = container.createDiv({
+      cls: 'spellbook-scroll-container'
+    });
+    
+    // Add some basic CSS to enable scrolling
+    scrollContainer.style.maxHeight = '80vh';
+    scrollContainer.style.overflowY = 'auto';
+    scrollContainer.style.padding = '0 15px';
 		
 		// Character Info Section
-		const charInfoSection = container.createDiv({ cls: 'character-info' });
+		const charInfoSection = scrollContainer.createDiv({ cls: 'character-info' });
 		charInfoSection.createEl('h2', { text: 'Character Information' });
 		charInfoSection.createEl('p', { 
 			text: `Class: ${this.plugin.settings.characterClass} | Level: ${this.plugin.settings.characterLevel}` 
 		});
 
 		// Spell Slots Section
-		const spellSlotsSection = container.createDiv({ cls: 'spell-slots-section' });
+		const spellSlotsSection = scrollContainer.createDiv({ cls: 'spell-slots-section' });
 		spellSlotsSection.createEl('h2', { text: 'Spell Slots' });
 
     // Add a close button near the top of the container
     const closeButton = container.createEl('button', {
       text: '✕ Close',
       cls: 'close-spellbook-btn'
-  });
-  closeButton.addEventListener('click', () => {
+    });
+    closeButton.addEventListener('click', () => {
       this.app.workspace.detachLeavesOfType(SPELLBOOK_VIEW_TYPE);
-  });
-  
+    });
+    
+    // Navigation buttons
+    const navButtons = container.createDiv({ cls: 'spellbook-nav-buttons' });
+    
+    const knownSpellsBtn = navButtons.createEl('button', {
+      text: 'View Known Spells',
+      cls: 'nav-btn'
+    });
+    knownSpellsBtn.addEventListener('click', () => {
+      this.plugin.activateKnownSpellsView();
+    });
 		
 		this.plugin.settings.spellSlots.forEach(slot => {
 			if (slot.total > 0) {
@@ -107,29 +181,55 @@ class SpellbookView extends ItemView {
 					this.plugin.useSpellSlot(slot.level);
 					this.refresh();
 				});
+        
+        const restoreButton = slotDiv.createEl('button', {
+          text: 'Restore',
+          cls: 'restore-slot-btn'
+        });
+        
+        restoreButton.addEventListener('click', () => {
+          this.plugin.restoreSpellSlot(slot.level);
+          this.refresh();
+        });
 			}
 		});
 
-		// Known Spells Section
-		const spellsSection = container.createDiv({ cls: 'known-spells-section' });
-		spellsSection.createEl('h2', { text: 'Known Spells' });
+		// Add a "Long Rest" button to restore all spell slots
+		const longRestBtn = scrollContainer.createEl('button', {
+			text: '🌙 Long Rest (Restore All Slots)',
+			cls: 'long-rest-btn'
+		});
+		longRestBtn.addEventListener('click', () => {
+			this.plugin.restoreAllSpellSlots();
+			this.refresh();
+			new Notice('All spell slots restored after a long rest!');
+		});
 
 		// Add Spell Button
-		const addSpellBtn = container.createEl('button', { 
+		const addSpellBtn = scrollContainer.createEl('button', { 
 			text: '+ Add New Spell',
 			cls: 'add-spell-btn'
 		});
 		addSpellBtn.addEventListener('click', () => this.openAddSpellModal());
 
-		// Render Spells
-		this.renderSpells(spellsSection);
+		// Prepared Spells Section
+		const preparedSpellsSection = scrollContainer.createDiv({ cls: 'prepared-spells-section' });
+		preparedSpellsSection.createEl('h2', { text: 'Prepared Spells' });
+		this.renderPreparedSpells(preparedSpellsSection);
 	}
 
-	renderSpells(container: HTMLElement) {
+	renderPreparedSpells(container: HTMLElement) {
 		container.empty();
 
-		this.plugin.settings.knownSpells.forEach(spell => {
-			const spellDiv = container.createDiv({ cls: 'spell-card' });
+		const preparedSpells = this.plugin.settings.knownSpells.filter(spell => spell.prepared);
+		
+		if (preparedSpells.length === 0) {
+			container.createEl('p', { text: 'No spells prepared yet. Prepare spells from your Known Spells list.' });
+			return;
+		}
+
+		preparedSpells.forEach(spell => {
+			const spellDiv = container.createDiv({ cls: 'spell-card prepared' });
 			
 			// Spell Name and Level
 			spellDiv.createEl('h3', { 
@@ -143,23 +243,13 @@ class SpellbookView extends ItemView {
 				cls: 'spell-description'
 			});
 
-			// Prepare/Unprepare Toggle
-			const prepareBtn = spellDiv.createEl('button', {
-				text: spell.prepared ? 'Unprepare' : 'Prepare',
-				cls: 'prepare-btn'
+			// Unprepare Button
+			const unprepareBtn = spellDiv.createEl('button', {
+				text: 'Unprepare',
+				cls: 'unprepare-btn'
 			});
-			prepareBtn.addEventListener('click', () => {
+			unprepareBtn.addEventListener('click', () => {
 				this.plugin.toggleSpellPreparation(spell.id);
-				this.refresh();
-			});
-
-			// Delete Spell Button
-			const deleteBtn = spellDiv.createEl('button', {
-				text: 'Delete',
-				cls: 'delete-btn'
-			});
-			deleteBtn.addEventListener('click', () => {
-				this.plugin.deleteSpell(spell.id);
 				this.refresh();
 			});
 		});
@@ -203,6 +293,16 @@ class SpellbookView extends ItemView {
 			modalContainer.remove();
 			this.refresh();
 		});
+    
+    // Cancel Button
+    const cancelBtn = form.createEl('button', { 
+      text: 'Cancel',
+      cls: 'cancel-btn' 
+    });
+    cancelBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      modalContainer.remove();
+    });
 	}
 
 	async onClose(): Promise<void> {
@@ -215,17 +315,281 @@ class SpellbookView extends ItemView {
 	}
 }
 
+class KnownSpellsView extends ItemView {
+  plugin: DnDSpellbookPlugin;
+
+  constructor(leaf: WorkspaceLeaf, plugin: DnDSpellbookPlugin) {
+    super(leaf);
+    this.plugin = plugin;
+  }
+
+  getViewType(): string {
+    return KNOWN_SPELLS_VIEW_TYPE;
+  }
+
+  getDisplayText(): string {
+    return "D&D Known Spells";
+  }
+
+  getIcon(): string {
+    return "book-open";
+  }
+
+  async onOpen(): Promise<void> {
+    const container = this.containerEl.createDiv({ 
+      cls: 'known-spells-container modern-spellbook-layout' 
+    });
+    
+    // Add scrollable content wrapper
+    const scrollContainer = container.createDiv({
+      cls: 'spellbook-scroll-container'
+    });
+    
+    // Add some basic CSS to enable scrolling
+    scrollContainer.style.maxHeight = '80vh';
+    scrollContainer.style.overflowY = 'auto';
+    scrollContainer.style.padding = '0 15px';
+    
+    // Header
+    scrollContainer.createEl('h2', { text: 'Known Spells' });
+    
+    // Close button
+    const closeButton = container.createEl('button', {
+      text: '✕ Close',
+      cls: 'close-spellbook-btn'
+    });
+    closeButton.addEventListener('click', () => {
+      this.app.workspace.detachLeavesOfType(KNOWN_SPELLS_VIEW_TYPE);
+    });
+    
+    // Navigation button to main spellbook
+    const navButtons = container.createDiv({ cls: 'spellbook-nav-buttons' });
+    
+    const spellbookBtn = navButtons.createEl('button', {
+      text: 'Back to Spellbook',
+      cls: 'nav-btn'
+    });
+    spellbookBtn.addEventListener('click', () => {
+      this.app.workspace.detachLeavesOfType(KNOWN_SPELLS_VIEW_TYPE);
+      this.plugin.activateView();
+    });
+    
+    // Add spell button
+    const addSpellBtn = scrollContainer.createEl('button', { 
+      text: '+ Add New Spell',
+      cls: 'add-spell-btn'
+    });
+    addSpellBtn.addEventListener('click', () => this.openAddSpellModal());
+    
+    // Filter controls
+    const filterContainer = scrollContainer.createDiv({ cls: 'filter-container' });
+    
+    filterContainer.createEl('label', { text: 'Filter by level: ' });
+    const levelFilter = filterContainer.createEl('select');
+    levelFilter.createEl('option', { text: 'All Levels', value: 'all' });
+    [0,1,2,3,4,5,6,7,8,9].forEach(level => {
+      levelFilter.createEl('option', { 
+        text: `Level ${level}`, 
+        value: level.toString() 
+      });
+    });
+    
+    // Sort function for spells
+    const sortByLevelName = (a: Spell, b: Spell) => {
+      if (a.level !== b.level) {
+        return a.level - b.level;
+      }
+      return a.name.localeCompare(b.name);
+    };
+    
+    // Render all spells initially
+    this.renderSpells(scrollContainer, this.plugin.settings.knownSpells.sort(sortByLevelName));
+    
+    // Add event listener for level filter
+    levelFilter.addEventListener('change', () => {
+      const value = levelFilter.value;
+      let filteredSpells = [...this.plugin.settings.knownSpells];
+      
+      if (value !== 'all') {
+        const levelNum = parseInt(value);
+        filteredSpells = filteredSpells.filter(spell => spell.level === levelNum);
+      }
+      
+      // Re-render with filtered list
+      const spellsContainer = scrollContainer.querySelector('.spells-list-container');
+      if (spellsContainer) {
+        spellsContainer.remove();
+      }
+      
+      this.renderSpells(scrollContainer, filteredSpells.sort(sortByLevelName));
+    });
+  }
+  
+  renderSpells(container: HTMLElement, spells: Spell[]) {
+    // Create a dedicated container for the spells list
+    const spellsContainer = container.createDiv({ cls: 'spells-list-container' });
+    
+    if (spells.length === 0) {
+      spellsContainer.createEl('p', { text: 'No spells found. Add some spells to your spellbook!' });
+      return;
+    }
+    
+    // Group spells by level
+    const spellsByLevel: {[key: number]: Spell[]} = {};
+    
+    spells.forEach(spell => {
+      if (!spellsByLevel[spell.level]) {
+        spellsByLevel[spell.level] = [];
+      }
+      spellsByLevel[spell.level].push(spell);
+    });
+    
+    // Render spells by level groups
+    Object.keys(spellsByLevel).sort((a, b) => parseInt(a) - parseInt(b)).forEach(level => {
+      const levelNum = parseInt(level);
+      const levelSpells = spellsByLevel[levelNum];
+      
+      const levelHeading = levelNum === 0 ? 'Cantrips' : `Level ${levelNum} Spells`;
+      const levelSection = spellsContainer.createDiv({ cls: 'spell-level-section' });
+      levelSection.createEl('h3', { text: levelHeading });
+      
+      levelSpells.forEach(spell => {
+        const spellDiv = levelSection.createDiv({ 
+          cls: `spell-card ${spell.prepared ? 'prepared' : ''}` 
+        });
+        
+        const headerDiv = spellDiv.createDiv({ cls: 'spell-header' });
+        headerDiv.createEl('span', { 
+          text: spell.name,
+          cls: 'spell-name'
+        });
+        
+        // Description with toggle
+        const descriptionContainer = spellDiv.createDiv({ cls: 'spell-description-container' });
+        const descriptionToggle = descriptionContainer.createEl('button', {
+          text: 'Show Description',
+          cls: 'description-toggle'
+        });
+        
+        const descriptionDiv = descriptionContainer.createDiv({ 
+          cls: 'spell-description hidden' 
+        });
+        descriptionDiv.createEl('p', { text: spell.description });
+        
+        descriptionToggle.addEventListener('click', () => {
+          if (descriptionDiv.classList.contains('hidden')) {
+            descriptionDiv.classList.remove('hidden');
+            descriptionToggle.textContent = 'Hide Description';
+          } else {
+            descriptionDiv.classList.add('hidden');
+            descriptionToggle.textContent = 'Show Description';
+          }
+        });
+        
+        // Control buttons
+        const buttonContainer = spellDiv.createDiv({ cls: 'spell-buttons' });
+        
+        // Prepare/Unprepare Toggle
+        const prepareBtn = buttonContainer.createEl('button', {
+          text: spell.prepared ? 'Unprepare' : 'Prepare',
+          cls: spell.prepared ? 'unprepare-btn' : 'prepare-btn'
+        });
+        prepareBtn.addEventListener('click', () => {
+          this.plugin.toggleSpellPreparation(spell.id);
+          this.refresh();
+        });
+        
+        // Delete Spell Button
+        const deleteBtn = buttonContainer.createEl('button', {
+          text: 'Delete',
+          cls: 'delete-btn'
+        });
+        deleteBtn.addEventListener('click', () => {
+          if (confirm(`Are you sure you want to delete "${spell.name}"?`)) {
+            this.plugin.deleteSpell(spell.id);
+            this.refresh();
+          }
+        });
+      });
+    });
+  }
+  
+  openAddSpellModal() {
+    const modalContainer = this.containerEl.createDiv({ cls: 'add-spell-modal' });
+    modalContainer.createEl('h2', { text: 'Add New Spell' });
+
+    const form = modalContainer.createEl('form');
+    
+    // Name Input
+    form.createEl('label', { text: 'Spell Name' });
+    const nameInput = form.createEl('input', { type: 'text' });
+    
+    // Level Input
+    form.createEl('label', { text: 'Spell Level' });
+    const levelInput = form.createEl('select');
+    [0,1,2,3,4,5,6,7,8,9].forEach(level => {
+      levelInput.createEl('option', { 
+        text: `Level ${level}`, 
+        value: level.toString() 
+      });
+    });
+
+    // Description Input
+    form.createEl('label', { text: 'Description' });
+    const descInput = form.createEl('textarea');
+
+    // Submit Button
+    const submitBtn = form.createEl('button', { text: 'Add Spell' });
+    submitBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      this.plugin.addSpell({
+        id: Date.now().toString(),
+        name: nameInput.value,
+        level: parseInt(levelInput.value),
+        description: descInput.value,
+        prepared: false
+      });
+      modalContainer.remove();
+      this.refresh();
+    });
+    
+    // Cancel Button
+    const cancelBtn = form.createEl('button', { 
+      text: 'Cancel',
+      cls: 'cancel-btn' 
+    });
+    cancelBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      modalContainer.remove();
+    });
+  }
+
+  async onClose(): Promise<void> {
+    this.containerEl.empty();
+  }
+
+  refresh() {
+    this.containerEl.empty();
+    this.onOpen();
+  }
+}
+
 export default class DnDSpellbookPlugin extends Plugin {
 	settings: DnDSpellbookSettings;
 
 	async onload() {
 		await this.loadSettings();
 
-		// Register custom view
+		// Register custom views
 		this.registerView(
 			SPELLBOOK_VIEW_TYPE, 
 			(leaf) => new SpellbookView(leaf, this)
 		);
+    
+    this.registerView(
+      KNOWN_SPELLS_VIEW_TYPE,
+      (leaf) => new KnownSpellsView(leaf, this)
+    );
 
 		// Add ribbon icon to open spellbook
 		this.addRibbonIcon('book', 'D&D Spellbook', async () => {
@@ -234,9 +598,150 @@ export default class DnDSpellbookPlugin extends Plugin {
 
 		// Add settings tab
 		this.addSettingTab(new SpellbookSettingTab(this.app, this));
+    
+    // Add CSS to document head
+    this.addStyles();
 	}
+  
+  addStyles() {
+    // Adding some basic styles to improve appearance
+    const styleEl = document.createElement('style');
+    styleEl.id = 'dnd-spellbook-styles';
+    styleEl.innerHTML = `
+      .dnd-spellbook-container, .known-spells-container {
+        position: relative;
+        padding: 20px;
+      }
+      
+      .close-spellbook-btn {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        padding: 4px 8px;
+        background: #f44336;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      
+      .spellbook-nav-buttons {
+        display: flex;
+        justify-content: center;
+        margin: 10px 0;
+      }
+      
+      .nav-btn {
+        padding: 6px 12px;
+        margin: 0 5px;
+        background: #4caf50;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      
+      .spell-card {
+        margin: 10px 0;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        background: #f9f9f9;
+      }
+      
+      .spell-card.prepared {
+        border-color: #4caf50;
+        background: #e8f5e9;
+      }
+      
+      .spell-description.hidden {
+        display: none;
+      }
+      
+      .spell-buttons {
+        display: flex;
+        gap: 8px;
+        margin-top: 10px;
+      }
+      
+      .prepare-btn, .unprepare-btn, .delete-btn, .use-slot-btn, .restore-slot-btn {
+        padding: 4px 8px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      
+      .prepare-btn {
+        background: #4caf50;
+        color: white;
+      }
+      
+      .unprepare-btn {
+        background: #ff9800;
+        color: white;
+      }
+      
+      .delete-btn {
+        background: #f44336;
+        color: white;
+      }
+      
+      .add-spell-btn {
+        margin: 15px 0;
+        padding: 8px 16px;
+        background: #2196f3;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      
+      .long-rest-btn {
+        margin: 15px 0;
+        padding: 8px 16px;
+        background: #9c27b0;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      
+      .add-spell-modal {
+        position: fixed;
+        top: 20%;
+        left: 50%;
+        transform: translateX(-50%);
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0,0,0,0.3);
+        z-index: 1000;
+        width: 80%;
+        max-width: 500px;
+      }
+      
+      .add-spell-modal form {
+        display: flex;
+        flex-direction: column;
+      }
+      
+      .add-spell-modal input, .add-spell-modal select, .add-spell-modal textarea {
+        margin-bottom: 15px;
+        padding: 8px;
+      }
+      
+      .add-spell-modal textarea {
+        min-height: 100px;
+      }
+      
+      .filter-container {
+        margin: 15px 0;
+      }
+    `;
+    document.head.appendChild(styleEl);
+  }
 
-	 async activateView() {
+  async activateView() {
     const { workspace } = this.app;
 
     const leaves = workspace.getLeavesOfType(SPELLBOOK_VIEW_TYPE);
@@ -263,7 +768,36 @@ export default class DnDSpellbookPlugin extends Plugin {
         // Fallback error handling
         console.error('Could not create or find a leaf for the Spellbook view');
     }
-}
+  }
+  
+  async activateKnownSpellsView() {
+    const { workspace } = this.app;
+
+    const leaves = workspace.getLeavesOfType(KNOWN_SPELLS_VIEW_TYPE);
+
+    let leaf: WorkspaceLeaf | null = null;
+    if (leaves.length > 0) {
+        // If view already exists, activate it
+        leaf = leaves[0];
+    } else {
+        // Create new leaf if not exists
+        leaf = workspace.getRightLeaf(false);
+    }
+
+    // Null check before setting view state
+    if (leaf) {
+        await leaf.setViewState({
+            type: KNOWN_SPELLS_VIEW_TYPE,
+            active: true
+        });
+
+        // Ensure the leaf is activated
+        workspace.revealLeaf(leaf);
+    } else {
+        // Fallback error handling
+        console.error('Could not create or find a leaf for the Known Spells view');
+    }
+  }
 
 	async loadSettings() {
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
@@ -298,6 +832,41 @@ export default class DnDSpellbookPlugin extends Plugin {
 			this.saveSettings();
 		}
 	}
+  
+  restoreSpellSlot(level: number) {
+    const slot = this.settings.spellSlots.find(s => s.level === level);
+    if (slot && slot.used > 0) {
+      slot.used--;
+      this.saveSettings();
+    }
+  }
+  
+  restoreAllSpellSlots() {
+    this.settings.spellSlots.forEach(slot => {
+      slot.used = 0;
+    });
+    this.saveSettings();
+  }
+  
+  // Update spell slots when class/level changes
+  updateSpellSlots() {
+    const newSlots = calculateSpellSlots(
+      this.settings.characterClass, 
+      this.settings.characterLevel
+    );
+    
+    // Preserve used slots where possible
+    this.settings.spellSlots.forEach((currentSlot, index) => {
+      if (index < newSlots.length) {
+        // If total increased, keep used the same
+        // If total decreased, make sure used doesn't exceed total
+        newSlots[index].used = Math.min(currentSlot.used, newSlots[index].total);
+      }
+    });
+    
+    this.settings.spellSlots = newSlots;
+    this.saveSettings();
+  }
 }
 
 class SpellbookSettingTab extends PluginSettingTab {
@@ -324,22 +893,63 @@ class SpellbookSettingTab extends PluginSettingTab {
 				.setValue(this.plugin.settings.characterClass)
 				.onChange(async (value) => {
 					this.plugin.settings.characterClass = value;
+          // Update spell slots when class changes
+          this.plugin.updateSpellSlots();
 					await this.plugin.saveSettings();
+          
+          // Show notice about spell slots
+          new Notice('Spell slots updated based on character class');
 				})
 			);
 
 		new Setting(containerEl)
 			.setName('Character Level')
-			.setDesc('Set your character\'s current level')
-			.addText(text => text
-				.setValue(this.plugin.settings.characterLevel.toString())
+			.setDesc('Set your character\'s current level (1-20)')
+			.addSlider(slider => slider
+				.setLimits(1, 20, 1)
+				.setValue(this.plugin.settings.characterLevel)
+				.setDynamicTooltip()
 				.onChange(async (value) => {
-					const level = parseInt(value, 10);
-					if (!isNaN(level) && level > 0 && level <= 20) {
-						this.plugin.settings.characterLevel = level;
-						await this.plugin.saveSettings();
-					}
+					this.plugin.settings.characterLevel = value;
+          // Update spell slots when level changes
+          this.plugin.updateSpellSlots();
+					await this.plugin.saveSettings();
+          
+          // Show notice about spell slots
+          new Notice('Spell slots updated based on character level');
 				})
 			);
+      
+    // Add a button to reset all spell slots
+    new Setting(containerEl)
+      .setName('Reset Spell Slots')
+      .setDesc('Restore all spell slots (as if after a long rest)')
+      .addButton(button => button
+        .setButtonText('Long Rest')
+        .onClick(async () => {
+          this.plugin.restoreAllSpellSlots();
+          new Notice('All spell slots restored after a long rest!');
+        })
+      );
+      
+    // Add information about known spells
+    containerEl.createEl('h3', { text: 'Known Spells' });
+    
+    const spellCount = this.plugin.settings.knownSpells.length;
+    const preparedCount = this.plugin.settings.knownSpells.filter(s => s.prepared).length;
+    
+    containerEl.createEl('p', { 
+      text: `You currently know ${spellCount} spells and have ${preparedCount} prepared.` 
+    });
+    
+    new Setting(containerEl)
+      .setName('Manage Spells')
+      .setDesc('Open the spellbook to add, remove, or prepare spells')
+      .addButton(button => button
+        .setButtonText('Open Spellbook')
+        .onClick(async () => {
+          await this.plugin.activateView();
+        })
+      );
 	}
 }
