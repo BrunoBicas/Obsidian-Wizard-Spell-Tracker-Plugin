@@ -597,7 +597,7 @@ export default class DnDSpellbookPlugin extends Plugin {
 		this.addSettingTab(new SpellbookSettingTab(this.app, this));
     
     // Add CSS to document head
-    this.addStyles();
+    this.loadStyles();
 	}
   
 	loadStyles() {
