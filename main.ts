@@ -121,102 +121,97 @@ class SpellbookView extends ItemView {
 
 	async onOpen(): Promise<void> {
 		const container = this.containerEl.createDiv({ 
-      cls: 'dnd-spellbook-container modern-spellbook-layout' 
-    });
-    
-    // Add scrollable content wrapper
-    const scrollContainer = container.createDiv({
-      cls: 'spellbook-scroll-container'
-    });
-    
-    // Add some basic CSS to enable scrolling
-    scrollContainer.style.maxHeight = '80vh';
-    scrollContainer.style.overflowY = 'auto';
-    scrollContainer.style.padding = '0 15px';
+		  cls: 'dnd-spellbook-container modern-spellbook-layout' 
+		});
+		
+		// Close button
+		const closeButton = container.createEl('button', {
+		  text: '✕ Close',
+		  cls: 'close-spellbook-btn'
+		});
+		closeButton.addEventListener('click', () => {
+		  this.app.workspace.detachLeavesOfType(SPELLBOOK_VIEW_TYPE);
+		});
+		
+		// Navigation buttons
+		const navButtons = container.createDiv({ cls: 'spellbook-nav-buttons' });
+		
+		const knownSpellsBtn = navButtons.createEl('button', {
+		  text: 'View Known Spells',
+		  cls: 'nav-btn'
+		});
+		knownSpellsBtn.addEventListener('click', () => {
+		  this.plugin.activateKnownSpellsView();
+		});
+		
+		// Add scrollable content wrapper
+		const scrollContainer = container.createDiv({
+		  cls: 'spellbook-scroll-container'
+		});
 		
 		// Character Info Section
 		const charInfoSection = scrollContainer.createDiv({ cls: 'character-info' });
 		charInfoSection.createEl('h2', { text: 'Character Information' });
 		charInfoSection.createEl('p', { 
-			text: `Class: ${this.plugin.settings.characterClass} | Level: ${this.plugin.settings.characterLevel}` 
+		  text: `Class: ${this.plugin.settings.characterClass} | Level: ${this.plugin.settings.characterLevel}` 
 		});
-
+	  
 		// Spell Slots Section
 		const spellSlotsSection = scrollContainer.createDiv({ cls: 'spell-slots-section' });
 		spellSlotsSection.createEl('h2', { text: 'Spell Slots' });
-
-    // Add a close button near the top of the container
-    const closeButton = container.createEl('button', {
-      text: '✕ Close',
-      cls: 'close-spellbook-btn'
-    });
-    closeButton.addEventListener('click', () => {
-      this.app.workspace.detachLeavesOfType(SPELLBOOK_VIEW_TYPE);
-    });
-    
-    // Navigation buttons
-    const navButtons = container.createDiv({ cls: 'spellbook-nav-buttons' });
-    
-    const knownSpellsBtn = navButtons.createEl('button', {
-      text: 'View Known Spells',
-      cls: 'nav-btn'
-    });
-    knownSpellsBtn.addEventListener('click', () => {
-      this.plugin.activateKnownSpellsView();
-    });
 		
 		this.plugin.settings.spellSlots.forEach(slot => {
-			if (slot.total > 0) {
-				const slotDiv = spellSlotsSection.createDiv({ cls: 'spell-slot' });
-				slotDiv.createEl('span', { 
-					text: `Level ${slot.level}: ${slot.total - slot.used}/${slot.total}` 
-				});
-				
-				const useButton = slotDiv.createEl('button', { 
-					text: 'Use Slot',
-					cls: 'use-slot-btn'
-				});
-				
-				useButton.addEventListener('click', () => {
-					this.plugin.useSpellSlot(slot.level);
-					this.refresh();
-				});
-        
-        const restoreButton = slotDiv.createEl('button', {
-          text: 'Restore',
-          cls: 'restore-slot-btn'
-        });
-        
-        restoreButton.addEventListener('click', () => {
-          this.plugin.restoreSpellSlot(slot.level);
-          this.refresh();
-        });
-			}
+		  if (slot.total > 0) {
+			const slotDiv = spellSlotsSection.createDiv({ cls: 'spell-slot' });
+			slotDiv.createEl('span', { 
+			  text: `Level ${slot.level}: ${slot.total - slot.used}/${slot.total}` 
+			});
+			
+			const useButton = slotDiv.createEl('button', { 
+			  text: 'Use Slot',
+			  cls: 'use-slot-btn'
+			});
+			
+			useButton.addEventListener('click', () => {
+			  this.plugin.useSpellSlot(slot.level);
+			  this.refresh();
+			});
+			
+			const restoreButton = slotDiv.createEl('button', {
+			  text: 'Restore',
+			  cls: 'restore-slot-btn'
+			});
+			
+			restoreButton.addEventListener('click', () => {
+			  this.plugin.restoreSpellSlot(slot.level);
+			  this.refresh();
+			});
+		  }
 		});
-
+	  
 		// Add a "Long Rest" button to restore all spell slots
 		const longRestBtn = scrollContainer.createEl('button', {
-			text: '🌙 Long Rest (Restore All Slots)',
-			cls: 'long-rest-btn'
+		  text: '🌙 Long Rest (Restore All Slots)',
+		  cls: 'long-rest-btn'
 		});
 		longRestBtn.addEventListener('click', () => {
-			this.plugin.restoreAllSpellSlots();
-			this.refresh();
-			new Notice('All spell slots restored after a long rest!');
+		  this.plugin.restoreAllSpellSlots();
+		  this.refresh();
+		  new Notice('All spell slots restored after a long rest!');
 		});
-
+	  
 		// Add Spell Button
 		const addSpellBtn = scrollContainer.createEl('button', { 
-			text: '+ Add New Spell',
-			cls: 'add-spell-btn'
+		  text: '+ Add New Spell',
+		  cls: 'add-spell-btn'
 		});
 		addSpellBtn.addEventListener('click', () => this.openAddSpellModal());
-
+	  
 		// Prepared Spells Section
 		const preparedSpellsSection = scrollContainer.createDiv({ cls: 'prepared-spells-section' });
 		preparedSpellsSection.createEl('h2', { text: 'Prepared Spells' });
 		this.renderPreparedSpells(preparedSpellsSection);
-	}
+	  }
 
 	renderPreparedSpells(container: HTMLElement) {
 		container.empty();
@@ -579,18 +574,20 @@ export default class DnDSpellbookPlugin extends Plugin {
 
 	async onload() {
 		await this.loadSettings();
+  
+  // Initialize spell slots based on current class/level when plugin loads
+  this.settings.spellSlots = calculateSpellSlots(
+    this.settings.characterClass,
+    this.settings.characterLevel
+  );
+  await this.saveSettings();
 
-		// Register custom views
-		this.registerView(
-			SPELLBOOK_VIEW_TYPE, 
-			(leaf) => new SpellbookView(leaf, this)
-		);
+  // Register custom views
+  this.registerView(
+    SPELLBOOK_VIEW_TYPE, 
+    (leaf) => new SpellbookView(leaf, this)
+  );
     
-    this.registerView(
-      KNOWN_SPELLS_VIEW_TYPE,
-      (leaf) => new KnownSpellsView(leaf, this)
-    );
-
 		// Add ribbon icon to open spellbook
 		this.addRibbonIcon('book', 'D&D Spellbook', async () => {
 			await this.activateView();
@@ -603,143 +600,12 @@ export default class DnDSpellbookPlugin extends Plugin {
     this.addStyles();
 	}
   
-  addStyles() {
-    // Adding some basic styles to improve appearance
-    const styleEl = document.createElement('style');
-    styleEl.id = 'dnd-spellbook-styles';
-    styleEl.innerHTML = `
-      .dnd-spellbook-container, .known-spells-container {
-        position: relative;
-        padding: 20px;
-      }
-      
-      .close-spellbook-btn {
-        position: absolute;
-        top: 10px;
-        right: 10px;
-        padding: 4px 8px;
-        background: #f44336;
-        color: white;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-      }
-      
-      .spellbook-nav-buttons {
-        display: flex;
-        justify-content: center;
-        margin: 10px 0;
-      }
-      
-      .nav-btn {
-        padding: 6px 12px;
-        margin: 0 5px;
-        background: #4caf50;
-        color: white;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-      }
-      
-      .spell-card {
-        margin: 10px 0;
-        padding: 10px;
-        border: 1px solid #ccc;
-        border-radius: 5px;
-        background: #f9f9f9;
-      }
-      
-      .spell-card.prepared {
-        border-color: #4caf50;
-        background: #e8f5e9;
-      }
-      
-      .spell-description.hidden {
-        display: none;
-      }
-      
-      .spell-buttons {
-        display: flex;
-        gap: 8px;
-        margin-top: 10px;
-      }
-      
-      .prepare-btn, .unprepare-btn, .delete-btn, .use-slot-btn, .restore-slot-btn {
-        padding: 4px 8px;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-      }
-      
-      .prepare-btn {
-        background: #4caf50;
-        color: white;
-      }
-      
-      .unprepare-btn {
-        background: #ff9800;
-        color: white;
-      }
-      
-      .delete-btn {
-        background: #f44336;
-        color: white;
-      }
-      
-      .add-spell-btn {
-        margin: 15px 0;
-        padding: 8px 16px;
-        background: #2196f3;
-        color: white;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-      }
-      
-      .long-rest-btn {
-        margin: 15px 0;
-        padding: 8px 16px;
-        background: #9c27b0;
-        color: white;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-      }
-      
-      .add-spell-modal {
-        position: fixed;
-        top: 20%;
-        left: 50%;
-        transform: translateX(-50%);
-        background: white;
-        padding: 20px;
-        border-radius: 8px;
-        box-shadow: 0 0 10px rgba(0,0,0,0.3);
-        z-index: 1000;
-        width: 80%;
-        max-width: 500px;
-      }
-      
-      .add-spell-modal form {
-        display: flex;
-        flex-direction: column;
-      }
-      
-      .add-spell-modal input, .add-spell-modal select, .add-spell-modal textarea {
-        margin-bottom: 15px;
-        padding: 8px;
-      }
-      
-      .add-spell-modal textarea {
-        min-height: 100px;
-      }
-      
-      .filter-container {
-        margin: 15px 0;
-      }
-    `;
-    document.head.appendChild(styleEl);
-  }
+	loadStyles() {
+		const styleElement = document.createElement('link');
+		styleElement.rel = 'stylesheet';
+		styleElement.href = 'obsidian://css/plugins/dnd-spellbook/styles.css';
+		document.head.appendChild(styleElement);
+	  }
 
   async activateView() {
     const { workspace } = this.app;
@@ -799,9 +665,33 @@ export default class DnDSpellbookPlugin extends Plugin {
     }
   }
 
-	async loadSettings() {
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+  async loadSettings() {
+	this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+	
+	// Ensure spell slots match character class and level
+	if (this.settings.characterClass && this.settings.characterLevel) {
+	  const newSlots = calculateSpellSlots(
+		this.settings.characterClass,
+		this.settings.characterLevel
+	  );
+	  
+	  // Create a mapping of used slots from current settings
+	  const usedSlotsMap: Record<number, number> = {};
+	  this.settings.spellSlots.forEach(slot => {
+		usedSlotsMap[slot.level] = slot.used;
+	  });
+	  
+	  // Apply used slots to new configuration
+	  newSlots.forEach(slot => {
+		if (usedSlotsMap[slot.level] !== undefined) {
+		  slot.used = Math.min(usedSlotsMap[slot.level], slot.total);
+		}
+	  });
+	  
+	  this.settings.spellSlots = newSlots;
+	  await this.saveSettings();
 	}
+  }
 
 	async saveSettings() {
 		await this.saveData(this.settings);
@@ -850,22 +740,26 @@ export default class DnDSpellbookPlugin extends Plugin {
   
   // Update spell slots when class/level changes
   updateSpellSlots() {
-    const newSlots = calculateSpellSlots(
-      this.settings.characterClass, 
-      this.settings.characterLevel
-    );
-    
-    // Preserve used slots where possible
-    this.settings.spellSlots.forEach((currentSlot, index) => {
-      if (index < newSlots.length) {
-        // If total increased, keep used the same
-        // If total decreased, make sure used doesn't exceed total
-        newSlots[index].used = Math.min(currentSlot.used, newSlots[index].total);
-      }
-    });
-    
-    this.settings.spellSlots = newSlots;
-    this.saveSettings();
+	const newSlots = calculateSpellSlots(
+	  this.settings.characterClass, 
+	  this.settings.characterLevel
+	);
+	
+	// Create a mapping of used slots from current settings
+	const usedSlotsMap: Record<number, number> = {};
+	this.settings.spellSlots.forEach(slot => {
+	  usedSlotsMap[slot.level] = slot.used;
+	});
+	
+	// Apply used slots to new configuration where possible
+	newSlots.forEach(slot => {
+	  if (usedSlotsMap[slot.level] !== undefined) {
+		slot.used = Math.min(usedSlotsMap[slot.level], slot.total);
+	  }
+	});
+	
+	this.settings.spellSlots = newSlots;
+	this.saveSettings();
   }
 }
 
