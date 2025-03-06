@@ -148,6 +148,9 @@ class SpellbookView extends ItemView {
 		const scrollContainer = container.createDiv({
 		  cls: 'spellbook-scroll-container'
 		});
+    scrollContainer.style.maxHeight = '70vh';
+    scrollContainer.style.overflowY = 'auto';
+    scrollContainer.style.paddingRight = '10px';
 		
 		// Character Info Section
 		const charInfoSection = scrollContainer.createDiv({ cls: 'character-info' });
@@ -341,9 +344,9 @@ class KnownSpellsView extends ItemView {
     });
     
     // Add some basic CSS to enable scrolling
-    scrollContainer.style.maxHeight = '80vh';
+    scrollContainer.style.maxHeight = '70vh';
     scrollContainer.style.overflowY = 'auto';
-    scrollContainer.style.padding = '0 15px';
+    scrollContainer.style.paddingRight = '10px';
     
     // Header
     scrollContainer.createEl('h2', { text: 'Known Spells' });
@@ -581,11 +584,14 @@ export default class DnDSpellbookPlugin extends Plugin {
     this.settings.characterLevel
   );
   await this.saveSettings();
-
   // Register custom views
   this.registerView(
     SPELLBOOK_VIEW_TYPE, 
     (leaf) => new SpellbookView(leaf, this)
+  );
+  this.registerView(
+    KNOWN_SPELLS_VIEW_TYPE,
+    (leaf) => new KnownSpellsView(leaf, this)
   );
     
 		// Add ribbon icon to open spellbook
@@ -740,29 +746,37 @@ export default class DnDSpellbookPlugin extends Plugin {
   
   // Update spell slots when class/level changes
   updateSpellSlots() {
-	const newSlots = calculateSpellSlots(
-	  this.settings.characterClass, 
-	  this.settings.characterLevel
-	);
-	
-	// Create a mapping of used slots from current settings
-	const usedSlotsMap: Record<number, number> = {};
-	this.settings.spellSlots.forEach(slot => {
-	  usedSlotsMap[slot.level] = slot.used;
-	});
-	
-	// Apply used slots to new configuration where possible
-	newSlots.forEach(slot => {
-	  if (usedSlotsMap[slot.level] !== undefined) {
-		slot.used = Math.min(usedSlotsMap[slot.level], slot.total);
-	  }
-	});
-	
-	this.settings.spellSlots = newSlots;
-	this.saveSettings();
+  const newSlots = calculateSpellSlots(
+    this.settings.characterClass, 
+    this.settings.characterLevel
+  );
+  
+  // Create a mapping of used slots from current settings
+  const usedSlotsMap: Record<number, number> = {};
+  this.settings.spellSlots.forEach(slot => {
+    usedSlotsMap[slot.level] = slot.used;
+  });
+  
+  // Apply used slots to new configuration where possible
+  newSlots.forEach(slot => {
+    if (usedSlotsMap[slot.level] !== undefined) {
+      slot.used = Math.min(usedSlotsMap[slot.level], slot.total);
+    }
+  });
+  
+  this.settings.spellSlots = newSlots;
+  this.saveSettings();
+  
+  // Refresh views if they're open
+  const spellbookLeaves = this.app.workspace.getLeavesOfType(SPELLBOOK_VIEW_TYPE);
+  if (spellbookLeaves.length > 0) {
+    const view = spellbookLeaves[0].view as SpellbookView;
+    if (view && view.refresh) {
+      view.refresh();
+    }
+  }
   }
 }
-
 class SpellbookSettingTab extends PluginSettingTab {
 	plugin: DnDSpellbookPlugin;
 
