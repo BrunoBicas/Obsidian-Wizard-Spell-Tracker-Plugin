@@ -66,34 +66,228 @@ function calculateSpellSlots(characterClass: string, level: number): SpellSlot[]
 
   // Full casters: wizard, cleric, druid
   if (characterClass === 'wizard' || characterClass === 'cleric' || characterClass === 'druid') {
-    if (level >= 1) slots[0].total = 2;
-    if (level >= 2) slots[0].total = 3;
-    if (level >= 3) { slots[0].total = 4; slots[1].total = 2; }
-    if (level >= 4) { slots[1].total = 3; }
-    if (level >= 5) { slots[0].total = 4; slots[1].total = 3; slots[2].total = 2; }
-    if (level >= 6) { slots[2].total = 3; }
-    if (level >= 7) { slots[3].total = 1; }
-    if (level >= 8) { slots[3].total = 2; }
-    if (level >= 9) { slots[3].total = 3; slots[4].total = 1; }
-    if (level >= 10) { slots[4].total = 2; }
-    if (level >= 11) { slots[5].total = 1; }
-    if (level >= 13) { slots[6].total = 1; }
-    if (level >= 15) { slots[7].total = 1; }
-    if (level >= 17) { slots[8].total = 1; }
+    // Level 1
+    if (level >= 1) {
+      slots[0].total = 2;
+    }
+    // Level 2
+    if (level >= 2) {
+      slots[0].total = 3;
+    }
+    // Level 3
+    if (level >= 3) {
+      slots[0].total = 4;
+      slots[1].total = 2;
+    }
+    // Level 4
+    if (level >= 4) {
+      slots[0].total = 4;
+      slots[1].total = 3;
+    }
+    // Level 5
+    if (level >= 5) {
+      slots[0].total = 4;
+      slots[1].total = 3;
+      slots[2].total = 2;
+    }
+    // Level 6
+    if (level >= 6) {
+      slots[0].total = 4;
+      slots[1].total = 3;
+      slots[2].total = 3;
+    }
+    // Level 7
+    if (level >= 7) {
+      slots[0].total = 4;
+      slots[1].total = 3;
+      slots[2].total = 3;
+      slots[3].total = 1;
+    }
+    // Level 8
+    if (level >= 8) {
+      slots[0].total = 4;
+      slots[1].total = 3;
+      slots[2].total = 3;
+      slots[3].total = 2;
+    }
+    // Level 9
+    if (level >= 9) {
+      slots[0].total = 4;
+      slots[1].total = 3;
+      slots[2].total = 3;
+      slots[3].total = 3;
+      slots[4].total = 1;
+    }
+    // Level 10
+    if (level >= 10) {
+      slots[0].total = 4;
+      slots[1].total = 3;
+      slots[2].total = 3;
+      slots[3].total = 3;
+      slots[4].total = 2;
+    }
+    // Level 11
+    if (level >= 11) {
+      slots[0].total = 4;
+      slots[1].total = 3;
+      slots[2].total = 3;
+      slots[3].total = 3;
+      slots[4].total = 2;
+      slots[5].total = 1;
+    }
+    // Level 12
+    if (level >= 12) {
+      slots[0].total = 4;
+      slots[1].total = 3;
+      slots[2].total = 3;
+      slots[3].total = 3;
+      slots[4].total = 2;
+      slots[5].total = 1;
+    }
+    // Level 13
+    if (level >= 13) {
+      slots[0].total = 4;
+      slots[1].total = 3;
+      slots[2].total = 3;
+      slots[3].total = 3;
+      slots[4].total = 2;
+      slots[5].total = 1;
+      slots[6].total = 1;
+    }
+    // Level 14
+    if (level >= 14) {
+      slots[0].total = 4;
+      slots[1].total = 3;
+      slots[2].total = 3;
+      slots[3].total = 3;
+      slots[4].total = 2;
+      slots[5].total = 1;
+      slots[6].total = 1;
+    }
+    // Level 15
+    if (level >= 15) {
+      slots[0].total = 4;
+      slots[1].total = 3;
+      slots[2].total = 3;
+      slots[3].total = 3;
+      slots[4].total = 2;
+      slots[5].total = 1;
+      slots[6].total = 1;
+      slots[7].total = 1;
+    }
+    // Level 16
+    if (level >= 16) {
+      slots[0].total = 4;
+      slots[1].total = 3;
+      slots[2].total = 3;
+      slots[3].total = 3;
+      slots[4].total = 2;
+      slots[5].total = 1;
+      slots[6].total = 1;
+      slots[7].total = 1;
+    }
+    // Level 17
+    if (level >= 17) {
+      slots[0].total = 4;
+      slots[1].total = 3;
+      slots[2].total = 3;
+      slots[3].total = 3;
+      slots[4].total = 2;
+      slots[5].total = 1;
+      slots[6].total = 1;
+      slots[7].total = 1;
+      slots[8].total = 1;
+    }
+    // Level 18
+    if (level >= 18) {
+      slots[0].total = 4;
+      slots[1].total = 3;
+      slots[2].total = 3;
+      slots[3].total = 3;
+      slots[4].total = 3;
+      slots[5].total = 1;
+      slots[6].total = 1;
+      slots[7].total = 1;
+      slots[8].total = 1;
+    }
+    // Level 19
+    if (level >= 19) {
+      slots[0].total = 4;
+      slots[1].total = 3;
+      slots[2].total = 3;
+      slots[3].total = 3;
+      slots[4].total = 3;
+      slots[5].total = 2;
+      slots[6].total = 1;
+      slots[7].total = 1;
+      slots[8].total = 1;
+    }
+    // Level 20
+    if (level >= 20) {
+      slots[0].total = 4;
+      slots[1].total = 3;
+      slots[2].total = 3;
+      slots[3].total = 3;
+      slots[4].total = 3;
+      slots[5].total = 2;
+      slots[6].total = 2;
+      slots[7].total = 1;
+      slots[8].total = 1;
+    }
   }
   // Half casters: paladin, ranger
   else if (characterClass === 'paladin' || characterClass === 'ranger') {
-    // Half casters get spell slots at level 2
-    if (level >= 2) slots[0].total = 2;
-    if (level >= 3) slots[0].total = 3;
-    if (level >= 5) { slots[0].total = 4; slots[1].total = 2; }
-    if (level >= 7) slots[1].total = 3;
-    if (level >= 9) { slots[2].total = 2; }
-    if (level >= 11) slots[2].total = 3;
-    if (level >= 13) slots[3].total = 1;
-    if (level >= 15) slots[3].total = 2;
-    if (level >= 17) slots[3].total = 3;
-    if (level >= 19) slots[4].total = 1;
+    // Half casters start getting spell slots at level 2
+    if (level >= 2) {
+      slots[0].total = 2;
+    }
+    if (level >= 3) {
+      slots[0].total = 3;
+    }
+    if (level >= 5) {
+      slots[0].total = 4;
+      slots[1].total = 2;
+    }
+    if (level >= 7) {
+      slots[0].total = 4;
+      slots[1].total = 3;
+    }
+    if (level >= 9) {
+      slots[0].total = 4;
+      slots[1].total = 3;
+      slots[2].total = 2;
+    }
+    if (level >= 11) {
+      slots[0].total = 4;
+      slots[1].total = 3;
+      slots[2].total = 3;
+    }
+    if (level >= 13) {
+      slots[0].total = 4;
+      slots[1].total = 3;
+      slots[2].total = 3;
+      slots[3].total = 1;
+    }
+    if (level >= 15) {
+      slots[0].total = 4;
+      slots[1].total = 3;
+      slots[2].total = 3;
+      slots[3].total = 2;
+    }
+    if (level >= 17) {
+      slots[0].total = 4;
+      slots[1].total = 3;
+      slots[2].total = 3;
+      slots[3].total = 3;
+      slots[4].total = 1;
+    }
+    if (level >= 19) {
+      slots[0].total = 4;
+      slots[1].total = 3;
+      slots[2].total = 3;
+      slots[3].total = 3;
+      slots[4].total = 2;
+    }
   }
 
   return slots;
@@ -308,9 +502,10 @@ class SpellbookView extends ItemView {
 	}
 
 	refresh() {
-		this.containerEl.empty();
-		this.onOpen();
-	}
+		this.plugin.updateSpellSlots();
+    this.containerEl.empty();
+    this.onOpen();
+  }
 }
 
 class KnownSpellsView extends ItemView {
@@ -614,6 +809,8 @@ export default class DnDSpellbookPlugin extends Plugin {
 	  }
 
   async activateView() {
+    this.updateSpellSlots();
+    
     const { workspace } = this.app;
 
     const leaves = workspace.getLeavesOfType(SPELLBOOK_VIEW_TYPE);
@@ -746,35 +943,44 @@ export default class DnDSpellbookPlugin extends Plugin {
   
   // Update spell slots when class/level changes
   updateSpellSlots() {
-  const newSlots = calculateSpellSlots(
-    this.settings.characterClass, 
-    this.settings.characterLevel
-  );
-  
-  // Create a mapping of used slots from current settings
-  const usedSlotsMap: Record<number, number> = {};
-  this.settings.spellSlots.forEach(slot => {
-    usedSlotsMap[slot.level] = slot.used;
-  });
-  
-  // Apply used slots to new configuration where possible
-  newSlots.forEach(slot => {
-    if (usedSlotsMap[slot.level] !== undefined) {
-      slot.used = Math.min(usedSlotsMap[slot.level], slot.total);
+    const newSlots = calculateSpellSlots(
+      this.settings.characterClass, 
+      this.settings.characterLevel
+    );
+    
+    // Create a mapping of used slots from current settings
+    const usedSlotsMap: Record<number, number> = {};
+    this.settings.spellSlots.forEach(slot => {
+      usedSlotsMap[slot.level] = slot.used;
+    });
+    
+    // Apply used slots to new configuration where possible
+    newSlots.forEach(slot => {
+      if (usedSlotsMap[slot.level] !== undefined) {
+        slot.used = Math.min(usedSlotsMap[slot.level], slot.total);
+      }
+    });
+    
+    this.settings.spellSlots = newSlots;
+    this.saveSettings();
+    
+    // Refresh views if they're open
+    const spellbookLeaves = this.app.workspace.getLeavesOfType(SPELLBOOK_VIEW_TYPE);
+    if (spellbookLeaves.length > 0) {
+      const view = spellbookLeaves[0].view as SpellbookView;
+      if (view && view.refresh) {
+        view.refresh();
+      }
     }
-  });
-  
-  this.settings.spellSlots = newSlots;
-  this.saveSettings();
-  
-  // Refresh views if they're open
-  const spellbookLeaves = this.app.workspace.getLeavesOfType(SPELLBOOK_VIEW_TYPE);
-  if (spellbookLeaves.length > 0) {
-    const view = spellbookLeaves[0].view as SpellbookView;
-    if (view && view.refresh) {
-      view.refresh();
+    
+    // Also refresh the known spells view if open
+    const knownSpellsLeaves = this.app.workspace.getLeavesOfType(KNOWN_SPELLS_VIEW_TYPE);
+    if (knownSpellsLeaves.length > 0) {
+      const view = knownSpellsLeaves[0].view as KnownSpellsView;
+      if (view && view.refresh) {
+        view.refresh();
+      }
     }
-  }
   }
 }
 class SpellbookSettingTab extends PluginSettingTab {
