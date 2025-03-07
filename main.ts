@@ -444,6 +444,14 @@ class SpellbookView extends ItemView {
 				this.plugin.toggleSpellPreparation(spell.id);
 				this.refresh();
 			});
+      const castBtn = spellDiv.createEl('button', {
+          text: 'Cast',
+          cls: 'cast-spell-btn'
+      });
+      castBtn.addEventListener('click', () => {
+          this.plugin.castSpell(spell);
+          this.refresh();
+      });
 		});
 	}
 
@@ -502,9 +510,49 @@ class SpellbookView extends ItemView {
 	}
 
 	refresh() {
-		this.plugin.updateSpellSlots();
-    this.containerEl.empty();
-    this.onOpen();
+    // First make sure settings are saved
+    this.plugin.updateSpellSlots();
+    // Clear only the spell slots section instead of the entire container
+    const spellSlotsSection = this.containerEl.querySelector('.spell-slots-section');
+    if (spellSlotsSection) {
+      spellSlotsSection.empty();
+      
+      // Re-render just the spell slots section
+      spellSlotsSection.createEl('h2', { text: 'Spell Slots' });
+      
+      this.plugin.settings.spellSlots.forEach(slot => {
+        if (slot.total > 0) {
+          const slotDiv = spellSlotsSection.createDiv({ cls: 'spell-slot' });
+          slotDiv.createEl('span', { 
+            text: `Level ${slot.level}: ${slot.total - slot.used}/${slot.total}` 
+          });
+          
+          const useButton = slotDiv.createEl('button', { 
+            text: 'Use Slot',
+            cls: 'use-slot-btn'
+          });
+          
+          useButton.addEventListener('click', () => {
+            this.plugin.useSpellSlot(slot.level);
+            this.refresh();
+          });
+          
+          const restoreButton = slotDiv.createEl('button', {
+            text: 'Restore',
+            cls: 'restore-slot-btn'
+          });
+          
+          restoreButton.addEventListener('click', () => {
+            this.plugin.restoreSpellSlot(slot.level);
+            this.refresh();
+          });
+        }
+      });
+    } else {
+      // Fall back to full re-render if section not found
+      this.containerEl.empty();
+      this.onOpen();
+    }
   }
 }
 
@@ -691,6 +739,17 @@ class KnownSpellsView extends ItemView {
           this.plugin.toggleSpellPreparation(spell.id);
           this.refresh();
         });
+
+        if (spell.prepared) {
+          const castBtn = buttonContainer.createEl('button', {
+              text: 'Cast',
+              cls: 'cast-btn'
+          });
+          castBtn.addEventListener('click', () => {
+              this.plugin.castSpell(spell);
+              this.refresh();
+          });
+      }
         
         // Delete Spell Button
         const deleteBtn = buttonContainer.createEl('button', {
@@ -919,12 +978,15 @@ export default class DnDSpellbookPlugin extends Plugin {
 	}
 
 	useSpellSlot(level: number) {
-		const slot = this.settings.spellSlots.find(s => s.level === level);
-		if (slot && slot.used < slot.total) {
-			slot.used++;
-			this.saveSettings();
-		}
-	}
+    const slot = this.settings.spellSlots.find(s => s.level === level);
+    if (slot && slot.used < slot.total) {
+      slot.used++;
+      new Notice(`Used a level ${level} spell slot. Remaining: ${slot.total - slot.used}/${slot.total}`);
+      this.saveSettings();
+    } else {
+      new Notice(`No available level ${level} spell slots!`);
+    }
+  }
   
   restoreSpellSlot(level: number) {
     const slot = this.settings.spellSlots.find(s => s.level === level);
@@ -940,6 +1002,35 @@ export default class DnDSpellbookPlugin extends Plugin {
     });
     this.saveSettings();
   }
+
+  //cast spells
+  castSpell(spell: Spell) {
+    if (spell.level === 0) {
+        new Notice(`Cast ${spell.name} (Cantrip)`);
+        return;
+    }
+    
+    const slot = this.settings.spellSlots.find(s => s.level === spell.level);
+    if (slot && slot.total > 0 && slot.used < slot.total) {
+        slot.used++;
+        this.saveSettings();
+        new Notice(`Cast ${spell.name} using a level ${spell.level} spell slot`);
+    } else {
+        // Try to find higher level slots
+        const availableSlots = this.settings.spellSlots
+            .filter(s => s.level > spell.level && s.total > 0 && s.used < s.total)
+            .sort((a, b) => a.level - b.level);
+        
+        if (availableSlots.length > 0) {
+            const higherSlot = availableSlots[0];
+            higherSlot.used++;
+            this.saveSettings();
+            new Notice(`Cast ${spell.name} using a level ${higherSlot.level} spell slot (upcast)`);
+        } else {
+            new Notice(`No available spell slots to cast ${spell.name}!`);
+        }
+    }
+}
   
   // Update spell slots when class/level changes
   updateSpellSlots() {
