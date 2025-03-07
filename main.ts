@@ -511,48 +511,11 @@ class SpellbookView extends ItemView {
 
 	refresh() {
     // First make sure settings are saved
-    this.plugin.updateSpellSlots();
-    // Clear only the spell slots section instead of the entire container
-    const spellSlotsSection = this.containerEl.querySelector('.spell-slots-section');
-    if (spellSlotsSection) {
-      spellSlotsSection.empty();
-      
-      // Re-render just the spell slots section
-      spellSlotsSection.createEl('h2', { text: 'Spell Slots' });
-      
-      this.plugin.settings.spellSlots.forEach(slot => {
-        if (slot.total > 0) {
-          const slotDiv = spellSlotsSection.createDiv({ cls: 'spell-slot' });
-          slotDiv.createEl('span', { 
-            text: `Level ${slot.level}: ${slot.total - slot.used}/${slot.total}` 
-          });
-          
-          const useButton = slotDiv.createEl('button', { 
-            text: 'Use Slot',
-            cls: 'use-slot-btn'
-          });
-          
-          useButton.addEventListener('click', () => {
-            this.plugin.useSpellSlot(slot.level);
-            this.refresh();
-          });
-          
-          const restoreButton = slotDiv.createEl('button', {
-            text: 'Restore',
-            cls: 'restore-slot-btn'
-          });
-          
-          restoreButton.addEventListener('click', () => {
-            this.plugin.restoreSpellSlot(slot.level);
-            this.refresh();
-          });
-        }
-      });
-    } else {
-      // Fall back to full re-render if section not found
-      this.containerEl.empty();
-      this.onOpen();
-    }
+    this.plugin.saveSettings();
+    
+    // Do a complete refresh like the KnownSpellsView does
+    this.containerEl.empty();
+    this.onOpen();
   }
 }
 
@@ -983,6 +946,7 @@ export default class DnDSpellbookPlugin extends Plugin {
       slot.used++;
       new Notice(`Used a level ${level} spell slot. Remaining: ${slot.total - slot.used}/${slot.total}`);
       this.saveSettings();
+      this.updateSpellSlots();
     } else {
       new Notice(`No available level ${level} spell slots!`);
     }
@@ -993,6 +957,7 @@ export default class DnDSpellbookPlugin extends Plugin {
     if (slot && slot.used > 0) {
       slot.used--;
       this.saveSettings();
+      this.updateSpellSlots();
     }
   }
   
@@ -1015,6 +980,7 @@ export default class DnDSpellbookPlugin extends Plugin {
         slot.used++;
         this.saveSettings();
         new Notice(`Cast ${spell.name} using a level ${spell.level} spell slot`);
+        this.updateSpellSlots();
     } else {
         // Try to find higher level slots
         const availableSlots = this.settings.spellSlots
@@ -1026,6 +992,7 @@ export default class DnDSpellbookPlugin extends Plugin {
             higherSlot.used++;
             this.saveSettings();
             new Notice(`Cast ${spell.name} using a level ${higherSlot.level} spell slot (upcast)`);
+            this.updateSpellSlots();
         } else {
             new Notice(`No available spell slots to cast ${spell.name}!`);
         }
