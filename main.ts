@@ -794,7 +794,9 @@ class KnownSpellsView extends ItemView {
 }
 
 export default class DnDSpellbookPlugin extends Plugin {
-	settings: DnDSpellbookSettings;
+	settings: DnDSpellbookSettings & {
+    spellFolderPath?: string;
+  };
 
 	async onload() {
 		await this.loadSettings();
@@ -1016,15 +1018,20 @@ async importSpellsFromNotes() {
     ? files.filter(file => file.path.startsWith(spellFolderPath))
     : files;
   
+  let importCount = 0;
+  
   for (const file of spellFiles) {
     // Check if spell already exists
     const spellName = file.basename;
     const existingSpell = this.settings.knownSpells.find(s => s.name === spellName);
     
+    // Read file content to use as description
+    const content = await this.app.vault.read(file);
+    
     if (existingSpell) {
       // Update existing spell description
-      const content = await this.app.vault.read(file);
       existingSpell.description = content;
+      importCount++;
     } else {
       // Try to determine spell level from filename or content
       let spellLevel = 0;
@@ -1035,14 +1042,18 @@ async importSpellsFromNotes() {
         spellLevel = parseInt(levelMatch[1]);
       }
       
-      // Read file content to use as description
-      const content = await this.app.vault.read(file);
-      
-      // If level wasn't found in filename, try to find it in content
+      // If level wasn't found in filename, try to find it in content with broader pattern matching
       if (spellLevel === 0) {
-        const contentLevelMatch = content.match(/level\s*(\d+)/i) || content.match(/(\d+)\w{0,2}\s*level/i);
+        const contentLevelMatch = content.match(/level\s*(\d+)/i) || 
+                                 content.match(/(\d+)\w{0,2}\s*level/i) ||
+                                 content.match(/(\d+)(?:st|nd|rd|th)[-\s]level/i);
         if (contentLevelMatch) {
           spellLevel = parseInt(contentLevelMatch[1]);
+        }
+        
+        // Check for "cantrip" or "level 0" mentions
+        if (content.match(/cantrip/i)) {
+          spellLevel = 0;
         }
       }
       
@@ -1054,10 +1065,11 @@ async importSpellsFromNotes() {
         description: content,
         prepared: false
       });
+      importCount++;
     }
   }
   
-  new Notice(`Imported ${spellFiles.length} spells from notes`);
+  new Notice(`Imported ${importCount} spells from notes`);
 }
   
   // Update spell slots when class/level changes
@@ -1123,7 +1135,6 @@ class SpellbookSettingTab extends PluginSettingTab {
 				.addOption('druid', 'Druid')
 				.addOption('paladin', 'Paladin')
 				.addOption('ranger', 'Ranger')
-        .addOption('rg', 'rg')
 				.setValue(this.plugin.settings.characterClass)
 				.onChange(async (value) => {
 					this.plugin.settings.characterClass = value;
@@ -1136,17 +1147,17 @@ class SpellbookSettingTab extends PluginSettingTab {
 				})
 			);
       
-    new Setting(containerEl)
-    .setName('Import Spells from Notes')
-    .setDesc('Specify a folder path to import spells from, or leave blank to scan all notes')
-    .addText(text => text
-      .setPlaceholder('Spells folder path (optional)')
-      .setValue(this.plugin.settings.spellFolderPath || '')
-      .onChange(async (value) => {
-        this.plugin.settings.spellFolderPath = value;
-        await this.plugin.saveSettings();
-      })
-    );
+      new Setting(containerEl)
+      .setName('Import Spells from Notes')
+      .setDesc('Specify a folder path to import spells from, or leave blank to scan all notes')
+      .addText(text => text
+        .setPlaceholder('Spells folder path (optional)')
+        .setValue(this.plugin.settings.spellFolderPath || '')
+        .onChange(async (value) => {
+          this.plugin.settings.spellFolderPath = value;
+          await this.plugin.saveSettings();
+        })
+      );
     
     new Setting(containerEl)
       .setName('Import Now')
