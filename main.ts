@@ -25,6 +25,17 @@ interface DnDSpellbookSettings {
   knownSpells: Spell[];
   importSpellsFromNotes: boolean;
   spellFolderPath: string;
+  // defaults:
+  cantripFolderPath: string;
+  level1FolderPath: string;
+  level2FolderPath: string;
+  level3FolderPath: string;
+  level4FolderPath: string;
+  level5FolderPath: string;
+  level6FolderPath: string;
+  level7FolderPath: string;
+  level8FolderPath: string;
+  level9FolderPath: string;
 }
 
 interface Spell {
@@ -51,7 +62,18 @@ const DEFAULT_SETTINGS: DnDSpellbookSettings = {
 	],
 	knownSpells: [],
   importSpellsFromNotes: false,
-  spellFolderPath: ''
+  spellFolderPath: '',
+  // defaults:
+  cantripFolderPath: '',
+  level1FolderPath: '',
+  level2FolderPath: '',
+  level3FolderPath: '',
+  level4FolderPath: '',
+  level5FolderPath: '',
+  level6FolderPath: '',
+  level7FolderPath: '',
+  level8FolderPath: '',
+  level9FolderPath: ''
 };
 
 // Function to calculate spell slots based on class and level
@@ -805,6 +827,48 @@ export default class DnDSpellbookPlugin extends Plugin {
       this.settings.spellFolderPath = '';
       await this.saveSettings();
     }
+    if (!this.settings.hasOwnProperty('cantripFolderPath')) {
+      this.settings.cantripFolderPath = '';
+      await this.saveSettings();
+    }
+    if (!this.settings.hasOwnProperty('level1FolderPath')) {
+      this.settings.level1FolderPath = '';
+      await this.saveSettings();
+    }
+    // defaults:
+    // ... continue for levels 2-9 ...
+    if (!this.settings.hasOwnProperty('level2FolderPath')) {
+      this.settings.level2FolderPath = '';
+      await this.saveSettings();
+    }
+    if (!this.settings.hasOwnProperty('level3FolderPath')) {
+      this.settings.level3FolderPath = '';
+      await this.saveSettings();
+    }
+    if (!this.settings.hasOwnProperty('level4FolderPath')) {
+      this.settings.level4FolderPath = '';
+      await this.saveSettings();
+    }
+    if (!this.settings.hasOwnProperty('level5FolderPath')) {
+      this.settings.level5FolderPath = '';
+      await this.saveSettings();
+    }
+    if (!this.settings.hasOwnProperty('level6FolderPath')) {
+      this.settings.level6FolderPath = '';
+      await this.saveSettings();
+    }
+    if (!this.settings.hasOwnProperty('level7FolderPath')) {
+      this.settings.level7FolderPath = '';
+      await this.saveSettings();
+    }
+    if (!this.settings.hasOwnProperty('level8FolderPath')) {
+      this.settings.level8FolderPath = '';
+      await this.saveSettings();
+    }
+    if (!this.settings.hasOwnProperty('level9FolderPath')) {
+      this.settings.level9FolderPath = '';
+      await this.saveSettings();
+    }
   
   // Initialize spell slots based on current class/level when plugin loads
   this.settings.spellSlots = calculateSpellSlots(
@@ -1012,61 +1076,79 @@ export default class DnDSpellbookPlugin extends Plugin {
 
 async importSpellsFromNotes() {
   const files = this.app.vault.getMarkdownFiles();
-  const spellFolderPath = this.settings.spellFolderPath || "";
-  
-  // Filter files by folder path if specified
-  const spellFiles = spellFolderPath 
-    ? files.filter(file => file.path.startsWith(spellFolderPath))
-    : files;
-  
   let importCount = 0;
   
-  for (const file of spellFiles) {
-    // Check if spell already exists
-    const spellName = file.basename;
-    const existingSpell = this.settings.knownSpells.find(s => s.name === spellName);
+  // Process each level folder
+  const levelFolders = [
+    { level: 0, path: this.settings.cantripFolderPath },
+    { level: 1, path: this.settings.level1FolderPath },
+    { level: 2, path: this.settings.level2FolderPath },
+    { level: 3, path: this.settings.level3FolderPath },
+    { level: 4, path: this.settings.level4FolderPath },
+    { level: 5, path: this.settings.level5FolderPath },
+    { level: 6, path: this.settings.level6FolderPath },
+    { level: 7, path: this.settings.level7FolderPath },
+    { level: 8, path: this.settings.level8FolderPath },
+    { level: 9, path: this.settings.level9FolderPath }
+  ];
+  
+  // Also include the general folder if specified
+  if (this.settings.spellFolderPath) {
+    levelFolders.push({ level: -1, path: this.settings.spellFolderPath });
+  }
+  
+  for (const { level, path } of levelFolders) {
+    if (!path) continue;
     
-    // Read file content to use as description
-    const content = await this.app.vault.read(file);
+    const spellFiles = files.filter(file => file.path.startsWith(path));
     
-    if (existingSpell) {
-      // Update existing spell description
-      existingSpell.description = content;
-      importCount++;
-    } else {
-      // Try to determine spell level from filename or content
-      let spellLevel = 0;
+    for (const file of spellFiles) {
+      // Check if spell already exists
+      const spellName = file.basename;
+      const existingSpell = this.settings.knownSpells.find(s => s.name === spellName);
       
-      // Check if filename contains level (e.g., "Fireball (3)" or "Fireball - Level 3")
-      const levelMatch = spellName.match(/\((\d+)\)$/) || spellName.match(/level\s*(\d+)/i);
-      if (levelMatch) {
-        spellLevel = parseInt(levelMatch[1]);
-      }
+      // Read file content to use as description
+      const content = await this.app.vault.read(file);
       
-      // If level wasn't found in filename, try to find it in content with broader pattern matching
-      if (spellLevel === 0) {
-        const contentLevelMatch = content.match(/level\s*(\d+)/i) || 
-                                content.match(/(\d+)\w{0,2}\s*level/i) ||
-                                content.match(/(\d+)(?:st|nd|rd|th)[-\s]level/i);
-        if (contentLevelMatch) {
-          spellLevel = parseInt(contentLevelMatch[1]);
+      if (existingSpell) {
+        // Update existing spell description
+        existingSpell.description = content;
+        importCount++;
+      } else {
+        // Determine spell level
+        let spellLevel = level;
+        
+        // If from general folder, try to determine level from content
+        if (level === -1) {
+          // Use the existing logic to detect level from content
+          const levelMatch = spellName.match(/\((\d+)\)$/) || spellName.match(/level\s*(\d+)/i);
+          if (levelMatch) {
+            spellLevel = parseInt(levelMatch[1]);
+          } else {
+            const contentLevelMatch = content.match(/level\s*(\d+)/i) || 
+                                    content.match(/(\d+)\w{0,2}\s*level/i) ||
+                                    content.match(/(\d+)(?:st|nd|rd|th)[-\s]level/i);
+            if (contentLevelMatch) {
+              spellLevel = parseInt(contentLevelMatch[1]);
+            }
+            
+            // Check for "cantrip" mentions
+            if (content.match(/cantrip/i)) {
+              spellLevel = 0;
+            }
+          }
         }
         
-        // Check for "cantrip" or "level 0" mentions
-        if (content.match(/cantrip/i)) {
-          spellLevel = 0;
-        }
+        // Add the new spell
+        this.addSpell({
+          id: Date.now().toString(),
+          name: spellName,
+          level: spellLevel,
+          description: content,
+          prepared: false
+        });
+        importCount++;
       }
-      
-      // Add the new spell
-      this.addSpell({
-        id: Date.now().toString(),
-        name: spellName,
-        level: spellLevel,
-        description: content,
-        prepared: false
-      });
-      importCount++;
     }
   }
   
@@ -1161,14 +1243,14 @@ class SpellbookSettingTab extends PluginSettingTab {
         })
       );
     
-    new Setting(containerEl)
+      new Setting(containerEl)
       .setName('Import Now')
-      .setDesc('Import spells from notes based on the settings above')
+      .setDesc('Import spells from notes based on the folder settings above')
       .addButton(button => button
         .setButtonText('Import Spells')
         .onClick(async () => {
           const count = await this.plugin.importSpellsFromNotes();
-          new Notice(`Imported ${count} spells from folder: ${this.plugin.settings.spellFolderPath || 'All Notes'}`);
+          new Notice(`Imported ${count} spells from configured folders`);
         })
       );
 
@@ -1189,6 +1271,134 @@ class SpellbookSettingTab extends PluginSettingTab {
           new Notice('Spell slots updated based on character level');
 				})
 			);
+
+      new Setting(containerEl)
+    .setName('Global Spell Folder')
+    .setDesc('Optional: Specify a folder path to import spells from (will attempt to detect spell level)')
+    .addText(text => text
+      .setPlaceholder('Spells folder path (optional)')
+      .setValue(this.plugin.settings.spellFolderPath || '')
+      .onChange(async (value) => {
+        this.plugin.settings.spellFolderPath = value;
+        await this.plugin.saveSettings();
+      })
+    );
+  
+  // Cantrip folder
+  new Setting(containerEl)
+    .setName('Cantrips Folder')
+    .setDesc('Folder path for cantrips (level 0 spells)')
+    .addText(text => text
+      .setPlaceholder('Cantrips folder path')
+      .setValue(this.plugin.settings.cantripFolderPath || '')
+      .onChange(async (value) => {
+        this.plugin.settings.cantripFolderPath = value;
+        await this.plugin.saveSettings();
+      })
+    );
+    
+  // Level 1 spells
+  new Setting(containerEl)
+    .setName('Level 1 Spells Folder')
+    .setDesc('Folder path for level 1 spells')
+    .addText(text => text
+      .setPlaceholder('Level 1 spells folder path')
+      .setValue(this.plugin.settings.level1FolderPath || '')
+      .onChange(async (value) => {
+        this.plugin.settings.level1FolderPath = value;
+        await this.plugin.saveSettings();
+      })
+    );
+    // Continue with settings for levels 2-9...
+  // defaults:
+  new Setting(containerEl)
+  .setName('Level 2 Spells Folder')
+  .setDesc('Folder path for level 2 spells')
+  .addText(text => text
+    .setPlaceholder('Level 2 spells folder path')
+    .setValue(this.plugin.settings.level2FolderPath || '')
+    .onChange(async (value) => {
+      this.plugin.settings.level2FolderPath = value;
+      await this.plugin.saveSettings();
+    })
+  );
+  new Setting(containerEl)
+  .setName('Level 3 Spells Folder')
+  .setDesc('Folder path for level 3 spells')
+  .addText(text => text
+    .setPlaceholder('Level 3 spells folder path')
+    .setValue(this.plugin.settings.level3FolderPath || '')
+    .onChange(async (value) => {
+      this.plugin.settings.level3FolderPath = value;
+      await this.plugin.saveSettings();
+    })
+  );
+  new Setting(containerEl)
+  .setName('Level 4 Spells Folder')
+  .setDesc('Folder path for level 4 spells')
+  .addText(text => text
+    .setPlaceholder('Level 4 spells folder path')
+    .setValue(this.plugin.settings.level4FolderPath || '')
+    .onChange(async (value) => {
+      this.plugin.settings.level4FolderPath = value;
+      await this.plugin.saveSettings();
+    })
+  );
+  new Setting(containerEl)
+  .setName('Level 5 Spells Folder')
+  .setDesc('Folder path for level 5 spells')
+  .addText(text => text
+    .setPlaceholder('Level 5 spells folder path')
+    .setValue(this.plugin.settings.level5FolderPath || '')
+    .onChange(async (value) => {
+      this.plugin.settings.level5FolderPath = value;
+      await this.plugin.saveSettings();
+    })
+  );
+  new Setting(containerEl)
+  .setName('Level 6 Spells Folder')
+  .setDesc('Folder path for level 6 spells')
+  .addText(text => text
+    .setPlaceholder('Level 6 spells folder path')
+    .setValue(this.plugin.settings.level6FolderPath || '')
+    .onChange(async (value) => {
+      this.plugin.settings.level6FolderPath = value;
+      await this.plugin.saveSettings();
+    })
+  );
+  new Setting(containerEl)
+  .setName('Level 7 Spells Folder')
+  .setDesc('Folder path for level 7 spells')
+  .addText(text => text
+    .setPlaceholder('Level 7 spells folder path')
+    .setValue(this.plugin.settings.level7FolderPath || '')
+    .onChange(async (value) => {
+      this.plugin.settings.level7FolderPath = value;
+      await this.plugin.saveSettings();
+    })
+  );
+  new Setting(containerEl)
+  .setName('Level 8 Spells Folder')
+  .setDesc('Folder path for level 8 spells')
+  .addText(text => text
+    .setPlaceholder('Level 8 spells folder path')
+    .setValue(this.plugin.settings.level8FolderPath || '')
+    .onChange(async (value) => {
+      this.plugin.settings.level8FolderPath = value;
+      await this.plugin.saveSettings();
+    })
+  );
+  new Setting(containerEl)
+  .setName('Level 9 Spells Folder')
+  .setDesc('Folder path for level 9 spells')
+  .addText(text => text
+    .setPlaceholder('Level 9 spells folder path')
+    .setValue(this.plugin.settings.level9FolderPath || '')
+    .onChange(async (value) => {
+      this.plugin.settings.level9FolderPath = value;
+      await this.plugin.saveSettings();
+    })
+  );
       
     // Add a button to reset all spell slots
     new Setting(containerEl)
