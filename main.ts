@@ -1213,5 +1213,26 @@ class SpellbookSettingTab extends PluginSettingTab {
           await this.plugin.activateView();
         })
       );
+   new Setting(containerEl)
+  .setName('Import Spells from Notes')
+  .setDesc('Specify a folder path to import spells from, or leave blank to scan all notes')
+  .addText(text => text
+    .setPlaceholder('Spells folder path (optional)')
+    .setValue(this.plugin.settings.spellFolderPath || '')
+    .onChange(async (value) => {
+      this.plugin.settings.spellFolderPath = value;
+      await this.plugin.saveSettings();
+    })
+  );
+
+new Setting(containerEl)
+  .setName('Import Now')
+  .setDesc('Import spells from notes based on the settings above')
+  .addButton(button => button
+    .setButtonText('Import Spells')
+    .onClick(async () => {
+      await this.plugin.importSpellsFromNotes();
+    })
+  );
 	}
 }
