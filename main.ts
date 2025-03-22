@@ -1148,35 +1148,6 @@ class SpellbookSettingTab extends PluginSettingTab {
           new Notice('Spell slots updated based on character class');
 				})
 			);
-
-      new Setting(containerEl)
-      .setName('Import Spells from Notes')
-      .setDesc('Specify a folder path to import spells from, or leave blank to scan all notes')
-      .addText(text => text
-        .setPlaceholder('Spells folder path (optional)')
-        .setValue(this.plugin.settings.spellFolderPath || '')
-        .onChange(async (value) => {
-          this.plugin.settings.spellFolderPath = value;
-          await this.plugin.saveSettings();
-        })
-      )
-      .addButton(button => button
-        .setButtonText('Browse')
-        .setTooltip('Select folder')
-        .onClick(async () => {
-          // This is a simplified version, actual folder selection might need a custom modal
-          const folderPath = await this.plugin.selectFolderDialog();
-          if (folderPath) {
-            this.plugin.settings.spellFolderPath = folderPath;
-            await this.plugin.saveSettings();
-            // Update the text field value
-            const textInput = containerEl.querySelector('.setting-item input[type="text"]') as HTMLInputElement;
-            if (textInput) {
-              textInput.value = folderPath;
-            }
-          }
-        })
-      );
       
       new Setting(containerEl)
       .setName('Import Spells from Notes')
