@@ -23,7 +23,8 @@ interface DnDSpellbookSettings {
   characterLevel: number;
   spellSlots: SpellSlot[];
   knownSpells: Spell[];
-  importSpellsFromNotes: boolean; // Add this line
+  importSpellsFromNotes: boolean;
+  spellFolderPath: string;
 }
 
 interface Spell {
@@ -32,13 +33,6 @@ interface Spell {
 	level: number;
 	description: string;
 	prepared: boolean;
-}
-
-interface DnDSpellbookSettings {
-	characterClass: string;
-	characterLevel: number;
-	spellSlots: SpellSlot[];
-	knownSpells: Spell[];
 }
 
 const DEFAULT_SETTINGS: DnDSpellbookSettings = {
@@ -56,7 +50,8 @@ const DEFAULT_SETTINGS: DnDSpellbookSettings = {
     { level: 9, total: 0, used: 0 }
 	],
 	knownSpells: [],
-  importSpellsFromNotes: false // Add this line
+  importSpellsFromNotes: false,
+  spellFolderPath: ''
 };
 
 // Function to calculate spell slots based on class and level
