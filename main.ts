@@ -94,204 +94,6 @@ function calculateSpellSlots(characterClass: string, level: number): SpellSlot[]
       slots[1].total = 3;
       slots[2].total = 2;
     }
-    // Level 6
-    if (level >= 6) {
-      slots[0].total = 4;
-      slots[1].total = 3;
-      slots[2].total = 3;
-    }
-    // Level 7
-    if (level >= 7) {
-      slots[0].total = 4;
-      slots[1].total = 3;
-      slots[2].total = 3;
-      slots[3].total = 1;
-    }
-    // Level 8
-    if (level >= 8) {
-      slots[0].total = 4;
-      slots[1].total = 3;
-      slots[2].total = 3;
-      slots[3].total = 2;
-    }
-    // Level 9
-    if (level >= 9) {
-      slots[0].total = 4;
-      slots[1].total = 3;
-      slots[2].total = 3;
-      slots[3].total = 3;
-      slots[4].total = 1;
-    }
-    // Level 10
-    if (level >= 10) {
-      slots[0].total = 4;
-      slots[1].total = 3;
-      slots[2].total = 3;
-      slots[3].total = 3;
-      slots[4].total = 2;
-    }
-    // Level 11
-    if (level >= 11) {
-      slots[0].total = 4;
-      slots[1].total = 3;
-      slots[2].total = 3;
-      slots[3].total = 3;
-      slots[4].total = 2;
-      slots[5].total = 1;
-    }
-    // Level 12
-    if (level >= 12) {
-      slots[0].total = 4;
-      slots[1].total = 3;
-      slots[2].total = 3;
-      slots[3].total = 3;
-      slots[4].total = 2;
-      slots[5].total = 1;
-    }
-    // Level 13
-    if (level >= 13) {
-      slots[0].total = 4;
-      slots[1].total = 3;
-      slots[2].total = 3;
-      slots[3].total = 3;
-      slots[4].total = 2;
-      slots[5].total = 1;
-      slots[6].total = 1;
-    }
-    // Level 14
-    if (level >= 14) {
-      slots[0].total = 4;
-      slots[1].total = 3;
-      slots[2].total = 3;
-      slots[3].total = 3;
-      slots[4].total = 2;
-      slots[5].total = 1;
-      slots[6].total = 1;
-    }
-    // Level 15
-    if (level >= 15) {
-      slots[0].total = 4;
-      slots[1].total = 3;
-      slots[2].total = 3;
-      slots[3].total = 3;
-      slots[4].total = 2;
-      slots[5].total = 1;
-      slots[6].total = 1;
-      slots[7].total = 1;
-    }
-    // Level 16
-    if (level >= 16) {
-      slots[0].total = 4;
-      slots[1].total = 3;
-      slots[2].total = 3;
-      slots[3].total = 3;
-      slots[4].total = 2;
-      slots[5].total = 1;
-      slots[6].total = 1;
-      slots[7].total = 1;
-    }
-    // Level 17
-    if (level >= 17) {
-      slots[0].total = 4;
-      slots[1].total = 3;
-      slots[2].total = 3;
-      slots[3].total = 3;
-      slots[4].total = 2;
-      slots[5].total = 1;
-      slots[6].total = 1;
-      slots[7].total = 1;
-      slots[8].total = 1;
-    }
-    // Level 18
-    if (level >= 18) {
-      slots[0].total = 4;
-      slots[1].total = 3;
-      slots[2].total = 3;
-      slots[3].total = 3;
-      slots[4].total = 3;
-      slots[5].total = 1;
-      slots[6].total = 1;
-      slots[7].total = 1;
-      slots[8].total = 1;
-    }
-    // Level 19
-    if (level >= 19) {
-      slots[0].total = 4;
-      slots[1].total = 3;
-      slots[2].total = 3;
-      slots[3].total = 3;
-      slots[4].total = 3;
-      slots[5].total = 2;
-      slots[6].total = 1;
-      slots[7].total = 1;
-      slots[8].total = 1;
-    }
-    // Level 20
-    if (level >= 20) {
-      slots[0].total = 4;
-      slots[1].total = 3;
-      slots[2].total = 3;
-      slots[3].total = 3;
-      slots[4].total = 3;
-      slots[5].total = 2;
-      slots[6].total = 2;
-      slots[7].total = 1;
-      slots[8].total = 1;
-    }
-  }
-  // Half casters: paladin, ranger
-  else if (characterClass === 'paladin' || characterClass === 'ranger') {
-    // Half casters start getting spell slots at level 2
-    if (level >= 2) {
-      slots[0].total = 2;
-    }
-    if (level >= 3) {
-      slots[0].total = 3;
-    }
-    if (level >= 5) {
-      slots[0].total = 4;
-      slots[1].total = 2;
-    }
-    if (level >= 7) {
-      slots[0].total = 4;
-      slots[1].total = 3;
-    }
-    if (level >= 9) {
-      slots[0].total = 4;
-      slots[1].total = 3;
-      slots[2].total = 2;
-    }
-    if (level >= 11) {
-      slots[0].total = 4;
-      slots[1].total = 3;
-      slots[2].total = 3;
-    }
-    if (level >= 13) {
-      slots[0].total = 4;
-      slots[1].total = 3;
-      slots[2].total = 3;
-      slots[3].total = 1;
-    }
-    if (level >= 15) {
-      slots[0].total = 4;
-      slots[1].total = 3;
-      slots[2].total = 3;
-      slots[3].total = 2;
-    }
-    if (level >= 17) {
-      slots[0].total = 4;
-      slots[1].total = 3;
-      slots[2].total = 3;
-      slots[3].total = 3;
-      slots[4].total = 1;
-    }
-    if (level >= 19) {
-      slots[0].total = 4;
-      slots[1].total = 3;
-      slots[2].total = 3;
-      slots[3].total = 3;
-      slots[4].total = 2;
-    }
   }
 
   return slots;
@@ -1045,8 +847,8 @@ async importSpellsFromNotes() {
       // If level wasn't found in filename, try to find it in content with broader pattern matching
       if (spellLevel === 0) {
         const contentLevelMatch = content.match(/level\s*(\d+)/i) || 
-                                 content.match(/(\d+)\w{0,2}\s*level/i) ||
-                                 content.match(/(\d+)(?:st|nd|rd|th)[-\s]level/i);
+                                content.match(/(\d+)\w{0,2}\s*level/i) ||
+                                content.match(/(\d+)(?:st|nd|rd|th)[-\s]level/i);
         if (contentLevelMatch) {
           spellLevel = parseInt(contentLevelMatch[1]);
         }
@@ -1069,7 +871,8 @@ async importSpellsFromNotes() {
     }
   }
   
-  new Notice(`Imported ${importCount} spells from notes`);
+  this.updateSpellSlots(); // Refresh views if open
+  return importCount; // Return count for display in the Notice
 }
   
   // Update spell slots when class/level changes
@@ -1165,7 +968,8 @@ class SpellbookSettingTab extends PluginSettingTab {
       .addButton(button => button
         .setButtonText('Import Spells')
         .onClick(async () => {
-          await this.plugin.importSpellsFromNotes();
+          const count = await this.plugin.importSpellsFromNotes();
+          new Notice(`Imported ${count} spells from folder: ${this.plugin.settings.spellFolderPath || 'All Notes'}`);
         })
       );
 
