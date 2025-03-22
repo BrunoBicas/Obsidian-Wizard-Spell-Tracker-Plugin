@@ -18,6 +18,14 @@ interface SpellSlot {
 	used: number;
 }
 
+interface DnDSpellbookSettings {
+  characterClass: string;
+  characterLevel: number;
+  spellSlots: SpellSlot[];
+  knownSpells: Spell[];
+  importSpellsFromNotes: boolean; // Add this line
+}
+
 interface Spell {
 	id: string;
 	name: string;
@@ -47,7 +55,8 @@ const DEFAULT_SETTINGS: DnDSpellbookSettings = {
     { level: 8, total: 0, used: 0 },
     { level: 9, total: 0, used: 0 }
 	],
-	knownSpells: []
+	knownSpells: [],
+  importSpellsFromNotes: false // Add this line
 };
 
 // Function to calculate spell slots based on class and level
@@ -790,10 +799,16 @@ class KnownSpellsView extends ItemView {
 }
 
 export default class DnDSpellbookPlugin extends Plugin {
-	settings: DnDSpellbookSettings;
+	settings: DnDSpellbookSettings & {
+    spellFolderPath?: string;
+  };
 
 	async onload() {
 		await this.loadSettings();
+    if (!this.settings.hasOwnProperty('spellFolderPath')) {
+      this.settings.spellFolderPath = '';
+      await this.saveSettings();
+    }
   
   // Initialize spell slots based on current class/level when plugin loads
   this.settings.spellSlots = calculateSpellSlots(
@@ -998,6 +1013,59 @@ export default class DnDSpellbookPlugin extends Plugin {
         }
     }
 }
+
+async importSpellsFromNotes() {
+  const files = this.app.vault.getMarkdownFiles();
+  const spellFolderPath = this.settings.spellFolderPath || "";
+  
+  // Filter files by folder path if specified
+  const spellFiles = spellFolderPath 
+    ? files.filter(file => file.path.startsWith(spellFolderPath))
+    : files;
+  
+  for (const file of spellFiles) {
+    // Check if spell already exists
+    const spellName = file.basename;
+    const existingSpell = this.settings.knownSpells.find(s => s.name === spellName);
+    
+    if (existingSpell) {
+      // Update existing spell description
+      const content = await this.app.vault.read(file);
+      existingSpell.description = content;
+    } else {
+      // Try to determine spell level from filename or content
+      let spellLevel = 0;
+      
+      // Check if filename contains level (e.g., "Fireball (3)" or "Fireball - Level 3")
+      const levelMatch = spellName.match(/\((\d+)\)$/) || spellName.match(/level\s*(\d+)/i);
+      if (levelMatch) {
+        spellLevel = parseInt(levelMatch[1]);
+      }
+      
+      // Read file content to use as description
+      const content = await this.app.vault.read(file);
+      
+      // If level wasn't found in filename, try to find it in content
+      if (spellLevel === 0) {
+        const contentLevelMatch = content.match(/level\s*(\d+)/i) || content.match(/(\d+)\w{0,2}\s*level/i);
+        if (contentLevelMatch) {
+          spellLevel = parseInt(contentLevelMatch[1]);
+        }
+      }
+      
+      // Add the new spell
+      this.addSpell({
+        id: Date.now().toString(),
+        name: spellName,
+        level: spellLevel,
+        description: content,
+        prepared: false
+      });
+    }
+  }
+  
+  new Notice(`Imported ${spellFiles.length} spells from notes`);
+}
   
   // Update spell slots when class/level changes
   updateSpellSlots() {
@@ -1073,6 +1141,28 @@ class SpellbookSettingTab extends PluginSettingTab {
           new Notice('Spell slots updated based on character class');
 				})
 			);
+      
+      new Setting(containerEl)
+      .setName('Import Spells from Notes')
+      .setDesc('Specify a folder path to import spells from, or leave blank to scan all notes')
+      .addText(text => text
+        .setPlaceholder('Spells folder path (optional)')
+        .setValue(this.plugin.settings.spellFolderPath || '')
+        .onChange(async (value) => {
+          this.plugin.settings.spellFolderPath = value;
+          await this.plugin.saveSettings();
+        })
+      );
+    
+    new Setting(containerEl)
+      .setName('Import Now')
+      .setDesc('Import spells from notes based on the settings above')
+      .addButton(button => button
+        .setButtonText('Import Spells')
+        .onClick(async () => {
+          await this.plugin.importSpellsFromNotes();
+        })
+      );
 
 		new Setting(containerEl)
 			.setName('Character Level')
