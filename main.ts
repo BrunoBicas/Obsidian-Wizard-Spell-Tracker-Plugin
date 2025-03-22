@@ -105,7 +105,198 @@ function calculateSpellSlots(characterClass: string, level: number): SpellSlot[]
       slots[1].total = 3;
       slots[2].total = 3;
     }
-
+    // Level 7
+    if (level >= 7) {
+      slots[0].total = 4;
+      slots[1].total = 3;
+      slots[2].total = 3;
+      slots[3].total = 1;
+    }
+    // Level 8
+    if (level >= 8) {
+      slots[0].total = 4;
+      slots[1].total = 3;
+      slots[2].total = 3;
+      slots[3].total = 2;
+    }
+    // Level 9
+    if (level >= 9) {
+      slots[0].total = 4;
+      slots[1].total = 3;
+      slots[2].total = 3;
+      slots[3].total = 3;
+      slots[4].total = 1;
+    }
+    // Level 10
+    if (level >= 10) {
+      slots[0].total = 4;
+      slots[1].total = 3;
+      slots[2].total = 3;
+      slots[3].total = 3;
+      slots[4].total = 2;
+    }
+    // Level 11
+    if (level >= 11) {
+      slots[0].total = 4;
+      slots[1].total = 3;
+      slots[2].total = 3;
+      slots[3].total = 3;
+      slots[4].total = 2;
+      slots[5].total = 1;
+    }
+    // Level 12
+    if (level >= 12) {
+      slots[0].total = 4;
+      slots[1].total = 3;
+      slots[2].total = 3;
+      slots[3].total = 3;
+      slots[4].total = 2;
+      slots[5].total = 1;
+    }
+    // Level 13
+    if (level >= 13) {
+      slots[0].total = 4;
+      slots[1].total = 3;
+      slots[2].total = 3;
+      slots[3].total = 3;
+      slots[4].total = 2;
+      slots[5].total = 1;
+      slots[6].total = 1;
+    }
+    // Level 14
+    if (level >= 14) {
+      slots[0].total = 4;
+      slots[1].total = 3;
+      slots[2].total = 3;
+      slots[3].total = 3;
+      slots[4].total = 2;
+      slots[5].total = 1;
+      slots[6].total = 1;
+    }
+    // Level 15
+    if (level >= 15) {
+      slots[0].total = 4;
+      slots[1].total = 3;
+      slots[2].total = 3;
+      slots[3].total = 3;
+      slots[4].total = 2;
+      slots[5].total = 1;
+      slots[6].total = 1;
+      slots[7].total = 1;
+    }
+    // Level 16
+    if (level >= 16) {
+      slots[0].total = 4;
+      slots[1].total = 3;
+      slots[2].total = 3;
+      slots[3].total = 3;
+      slots[4].total = 2;
+      slots[5].total = 1;
+      slots[6].total = 1;
+      slots[7].total = 1;
+    }
+    // Level 17
+    if (level >= 17) {
+      slots[0].total = 4;
+      slots[1].total = 3;
+      slots[2].total = 3;
+      slots[3].total = 3;
+      slots[4].total = 2;
+      slots[5].total = 1;
+      slots[6].total = 1;
+      slots[7].total = 1;
+      slots[8].total = 1;
+    }
+    // Level 18
+    if (level >= 18) {
+      slots[0].total = 4;
+      slots[1].total = 3;
+      slots[2].total = 3;
+      slots[3].total = 3;
+      slots[4].total = 3;
+      slots[5].total = 1;
+      slots[6].total = 1;
+      slots[7].total = 1;
+      slots[8].total = 1;
+    }
+    // Level 19
+    if (level >= 19) {
+      slots[0].total = 4;
+      slots[1].total = 3;
+      slots[2].total = 3;
+      slots[3].total = 3;
+      slots[4].total = 3;
+      slots[5].total = 2;
+      slots[6].total = 1;
+      slots[7].total = 1;
+      slots[8].total = 1;
+    }
+    // Level 20
+    if (level >= 20) {
+      slots[0].total = 4;
+      slots[1].total = 3;
+      slots[2].total = 3;
+      slots[3].total = 3;
+      slots[4].total = 3;
+      slots[5].total = 2;
+      slots[6].total = 2;
+      slots[7].total = 1;
+      slots[8].total = 1;
+    }
+  }
+  // Half casters: paladin, ranger
+  else if (characterClass === 'paladin' || characterClass === 'ranger') {
+    // Half casters start getting spell slots at level 2
+    if (level >= 2) {
+      slots[0].total = 2;
+    }
+    if (level >= 3) {
+      slots[0].total = 3;
+    }
+    if (level >= 5) {
+      slots[0].total = 4;
+      slots[1].total = 2;
+    }
+    if (level >= 7) {
+      slots[0].total = 4;
+      slots[1].total = 3;
+    }
+    if (level >= 9) {
+      slots[0].total = 4;
+      slots[1].total = 3;
+      slots[2].total = 2;
+    }
+    if (level >= 11) {
+      slots[0].total = 4;
+      slots[1].total = 3;
+      slots[2].total = 3;
+    }
+    if (level >= 13) {
+      slots[0].total = 4;
+      slots[1].total = 3;
+      slots[2].total = 3;
+      slots[3].total = 1;
+    }
+    if (level >= 15) {
+      slots[0].total = 4;
+      slots[1].total = 3;
+      slots[2].total = 3;
+      slots[3].total = 2;
+    }
+    if (level >= 17) {
+      slots[0].total = 4;
+      slots[1].total = 3;
+      slots[2].total = 3;
+      slots[3].total = 3;
+      slots[4].total = 1;
+    }
+    if (level >= 19) {
+      slots[0].total = 4;
+      slots[1].total = 3;
+      slots[2].total = 3;
+      slots[3].total = 3;
+      slots[4].total = 2;
+    }
   }
 
   return slots;
