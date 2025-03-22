@@ -1242,17 +1242,6 @@ class SpellbookSettingTab extends PluginSettingTab {
           await this.plugin.saveSettings();
         })
       );
-    
-      new Setting(containerEl)
-      .setName('Import Now')
-      .setDesc('Import spells from notes based on the folder settings above')
-      .addButton(button => button
-        .setButtonText('Import Spells')
-        .onClick(async () => {
-          const count = await this.plugin.importSpellsFromNotes();
-          new Notice(`Imported ${count} spells from configured folders`);
-        })
-      );
 
 		new Setting(containerEl)
 			.setName('Character Level')
@@ -1429,6 +1418,16 @@ class SpellbookSettingTab extends PluginSettingTab {
         .setButtonText('Open Spellbook')
         .onClick(async () => {
           await this.plugin.activateView();
+        })
+      );
+      new Setting(containerEl)
+      .setName('Import Now')
+      .setDesc('Import spells from notes based on the folder settings above')
+      .addButton(button => button
+        .setButtonText('Import Spells')
+        .onClick(async () => {
+          const count = await this.plugin.importSpellsFromNotes();
+          new Notice(`Imported ${count} spells from configured folders`);
         })
       );
 	}
