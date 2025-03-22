@@ -794,9 +794,7 @@ class KnownSpellsView extends ItemView {
 }
 
 export default class DnDSpellbookPlugin extends Plugin {
-	settings: DnDSpellbookSettings & {
-    spellFolderPath?: string;
-  };
+	settings: DnDSpellbookSettings;
 
 	async onload() {
 		await this.loadSettings();
@@ -1125,6 +1123,7 @@ class SpellbookSettingTab extends PluginSettingTab {
 				.addOption('druid', 'Druid')
 				.addOption('paladin', 'Paladin')
 				.addOption('ranger', 'Ranger')
+        .addOption('rg', 'rg')
 				.setValue(this.plugin.settings.characterClass)
 				.onChange(async (value) => {
 					this.plugin.settings.characterClass = value;
@@ -1137,17 +1136,17 @@ class SpellbookSettingTab extends PluginSettingTab {
 				})
 			);
       
-      new Setting(containerEl)
-      .setName('Import Spells from Notes')
-      .setDesc('Specify a folder path to import spells from, or leave blank to scan all notes')
-      .addText(text => text
-        .setPlaceholder('Spells folder path (optional)')
-        .setValue(this.plugin.settings.spellFolderPath || '')
-        .onChange(async (value) => {
-          this.plugin.settings.spellFolderPath = value;
-          await this.plugin.saveSettings();
-        })
-      );
+    new Setting(containerEl)
+    .setName('Import Spells from Notes')
+    .setDesc('Specify a folder path to import spells from, or leave blank to scan all notes')
+    .addText(text => text
+      .setPlaceholder('Spells folder path (optional)')
+      .setValue(this.plugin.settings.spellFolderPath || '')
+      .onChange(async (value) => {
+        this.plugin.settings.spellFolderPath = value;
+        await this.plugin.saveSettings();
+      })
+    );
     
     new Setting(containerEl)
       .setName('Import Now')
