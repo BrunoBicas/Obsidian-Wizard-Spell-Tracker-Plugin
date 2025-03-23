@@ -1300,94 +1300,109 @@ class SpellbookSettingTab extends PluginSettingTab {
     );
     // Continue with settings for levels 2-9...
   // defaults:
-  new Setting(containerEl)
-  .setName('Level 2 Spells Folder')
-  .setDesc('Folder path for level 2 spells')
-  .addText(text => text
-    .setPlaceholder('Level 2 spells folder path')
-    .setValue(this.plugin.settings.level2FolderPath || '')
-    .onChange(async (value) => {
-      this.plugin.settings.level2FolderPath = value;
-      await this.plugin.saveSettings();
-    })
-  );
-  new Setting(containerEl)
-  .setName('Level 3 Spells Folder')
-  .setDesc('Folder path for level 3 spells')
-  .addText(text => text
-    .setPlaceholder('Level 3 spells folder path')
-    .setValue(this.plugin.settings.level3FolderPath || '')
-    .onChange(async (value) => {
-      this.plugin.settings.level3FolderPath = value;
-      await this.plugin.saveSettings();
-    })
-  );
-  new Setting(containerEl)
-  .setName('Level 4 Spells Folder')
-  .setDesc('Folder path for level 4 spells')
-  .addText(text => text
-    .setPlaceholder('Level 4 spells folder path')
-    .setValue(this.plugin.settings.level4FolderPath || '')
-    .onChange(async (value) => {
-      this.plugin.settings.level4FolderPath = value;
-      await this.plugin.saveSettings();
-    })
-  );
-  new Setting(containerEl)
-  .setName('Level 5 Spells Folder')
-  .setDesc('Folder path for level 5 spells')
-  .addText(text => text
-    .setPlaceholder('Level 5 spells folder path')
-    .setValue(this.plugin.settings.level5FolderPath || '')
-    .onChange(async (value) => {
-      this.plugin.settings.level5FolderPath = value;
-      await this.plugin.saveSettings();
-    })
-  );
-  new Setting(containerEl)
-  .setName('Level 6 Spells Folder')
-  .setDesc('Folder path for level 6 spells')
-  .addText(text => text
-    .setPlaceholder('Level 6 spells folder path')
-    .setValue(this.plugin.settings.level6FolderPath || '')
-    .onChange(async (value) => {
-      this.plugin.settings.level6FolderPath = value;
-      await this.plugin.saveSettings();
-    })
-  );
-  new Setting(containerEl)
-  .setName('Level 7 Spells Folder')
-  .setDesc('Folder path for level 7 spells')
-  .addText(text => text
-    .setPlaceholder('Level 7 spells folder path')
-    .setValue(this.plugin.settings.level7FolderPath || '')
-    .onChange(async (value) => {
-      this.plugin.settings.level7FolderPath = value;
-      await this.plugin.saveSettings();
-    })
-  );
-  new Setting(containerEl)
-  .setName('Level 8 Spells Folder')
-  .setDesc('Folder path for level 8 spells')
-  .addText(text => text
-    .setPlaceholder('Level 8 spells folder path')
-    .setValue(this.plugin.settings.level8FolderPath || '')
-    .onChange(async (value) => {
-      this.plugin.settings.level8FolderPath = value;
-      await this.plugin.saveSettings();
-    })
-  );
-  new Setting(containerEl)
-  .setName('Level 9 Spells Folder')
-  .setDesc('Folder path for level 9 spells')
-  .addText(text => text
-    .setPlaceholder('Level 9 spells folder path')
-    .setValue(this.plugin.settings.level9FolderPath || '')
-    .onChange(async (value) => {
-      this.plugin.settings.level9FolderPath = value;
-      await this.plugin.saveSettings();
-    })
-  );
+  // Level 2 spells
+new Setting(containerEl)
+.setName('Level 2 Spells Folder')
+.setDesc('Folder path for level 2 spells')
+.addText(text => text
+  .setPlaceholder('Level 2 spells folder path')
+  .setValue(this.plugin.settings.level2FolderPath || '')
+  .onChange(async (value) => {
+    this.plugin.settings.level2FolderPath = value;
+    await this.plugin.saveSettings();
+  })
+);
+
+// Level 3 spells
+new Setting(containerEl)
+.setName('Level 3 Spells Folder')
+.setDesc('Folder path for level 3 spells')
+.addText(text => text
+  .setPlaceholder('Level 3 spells folder path')
+  .setValue(this.plugin.settings.level3FolderPath || '')
+  .onChange(async (value) => {
+    this.plugin.settings.level3FolderPath = value;
+    await this.plugin.saveSettings();
+  })
+);
+
+// Level 4 spells
+new Setting(containerEl)
+.setName('Level 4 Spells Folder')
+.setDesc('Folder path for level 4 spells')
+.addText(text => text
+  .setPlaceholder('Level 4 spells folder path')
+  .setValue(this.plugin.settings.level4FolderPath || '')
+  .onChange(async (value) => {
+    this.plugin.settings.level4FolderPath = value;
+    await this.plugin.saveSettings();
+  })
+);
+
+// Level 5 spells
+new Setting(containerEl)
+.setName('Level 5 Spells Folder')
+.setDesc('Folder path for level 5 spells')
+.addText(text => text
+  .setPlaceholder('Level 5 spells folder path')
+  .setValue(this.plugin.settings.level5FolderPath || '')
+  .onChange(async (value) => {
+    this.plugin.settings.level5FolderPath = value;
+    await this.plugin.saveSettings();
+  })
+);
+
+// Level 6 spells
+new Setting(containerEl)
+.setName('Level 6 Spells Folder')
+.setDesc('Folder path for level 6 spells')
+.addText(text => text
+  .setPlaceholder('Level 6 spells folder path')
+  .setValue(this.plugin.settings.level6FolderPath || '')
+  .onChange(async (value) => {
+    this.plugin.settings.level6FolderPath = value;
+    await this.plugin.saveSettings();
+  })
+);
+
+// Level 7 spells
+new Setting(containerEl)
+.setName('Level 7 Spells Folder')
+.setDesc('Folder path for level 7 spells')
+.addText(text => text
+  .setPlaceholder('Level 7 spells folder path')
+  .setValue(this.plugin.settings.level7FolderPath || '')
+  .onChange(async (value) => {
+    this.plugin.settings.level7FolderPath = value;
+    await this.plugin.saveSettings();
+  })
+);
+
+// Level 8 spells
+new Setting(containerEl)
+.setName('Level 8 Spells Folder')
+.setDesc('Folder path for level 8 spells')
+.addText(text => text
+  .setPlaceholder('Level 8 spells folder path')
+  .setValue(this.plugin.settings.level8FolderPath || '')
+  .onChange(async (value) => {
+    this.plugin.settings.level8FolderPath = value;
+    await this.plugin.saveSettings();
+  })
+);
+
+// Level 9 spells
+new Setting(containerEl)
+.setName('Level 9 Spells Folder')
+.setDesc('Folder path for level 9 spells')
+.addText(text => text
+  .setPlaceholder('Level 9 spells folder path')
+  .setValue(this.plugin.settings.level9FolderPath || '')
+  .onChange(async (value) => {
+    this.plugin.settings.level9FolderPath = value;
+    await this.plugin.saveSettings();
+  })
+);
       
     // Add a button to reset all spell slots
     new Setting(containerEl)
