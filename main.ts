@@ -1256,10 +1256,12 @@ new Setting(containerEl)
       dropdown.addOption(i.toString(), `Level ${i}`);
     }
     dropdown.setValue("1");
+    dropdown.selectEl.addClass('add-bonus-dropdown');
     return dropdown;
   })
   .addText(text => {
     text.setPlaceholder("Source (e.g., 'Ring of Spell Storing')");
+    text.inputEl.addClass('add-bonus-text');
     return text;
   })
   .addButton(button => {
