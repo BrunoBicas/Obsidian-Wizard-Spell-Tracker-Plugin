@@ -16,12 +16,14 @@ interface SpellSlot {
 	level: number;
 	total: number;
 	used: number;
+  source?: string;
 }
 
 interface DnDSpellbookSettings {
   characterClass: string;
   characterLevel: number;
   spellSlots: SpellSlot[];
+  bonusSpellSlots: SpellSlot[];
   knownSpells: Spell[];
   importSpellsFromNotes: boolean;
   spellFolderPath: string;
@@ -73,11 +75,12 @@ const DEFAULT_SETTINGS: DnDSpellbookSettings = {
   level6FolderPath: '',
   level7FolderPath: '',
   level8FolderPath: '',
-  level9FolderPath: ''
+  level9FolderPath: '',
+  bonusSpellSlots: []
 };
 
 // Function to calculate spell slots based on class and level
-function calculateSpellSlots(characterClass: string, level: number): SpellSlot[] {
+function calculateSpellSlots(characterClass: string, level: number, bonusSlots: SpellSlot[]): SpellSlot[] {
   const slots: SpellSlot[] = [
     { level: 1, total: 0, used: 0 },
     { level: 2, total: 0, used: 0 },
@@ -105,216 +108,13 @@ function calculateSpellSlots(characterClass: string, level: number): SpellSlot[]
       slots[0].total = 4;
       slots[1].total = 2;
     }
-    // Level 4
-    if (level >= 4) {
-      slots[0].total = 4;
-      slots[1].total = 3;
-    }
-    // Level 5
-    if (level >= 5) {
-      slots[0].total = 4;
-      slots[1].total = 3;
-      slots[2].total = 2;
-    }
-    // Level 6
-    if (level >= 6) {
-      slots[0].total = 4;
-      slots[1].total = 3;
-      slots[2].total = 3;
-    }
-    // Level 7
-    if (level >= 7) {
-      slots[0].total = 4;
-      slots[1].total = 3;
-      slots[2].total = 3;
-      slots[3].total = 1;
-    }
-    // Level 8
-    if (level >= 8) {
-      slots[0].total = 4;
-      slots[1].total = 3;
-      slots[2].total = 3;
-      slots[3].total = 2;
-    }
-    // Level 9
-    if (level >= 9) {
-      slots[0].total = 4;
-      slots[1].total = 3;
-      slots[2].total = 3;
-      slots[3].total = 3;
-      slots[4].total = 1;
-    }
-    // Level 10
-    if (level >= 10) {
-      slots[0].total = 4;
-      slots[1].total = 3;
-      slots[2].total = 3;
-      slots[3].total = 3;
-      slots[4].total = 2;
-    }
-    // Level 11
-    if (level >= 11) {
-      slots[0].total = 4;
-      slots[1].total = 3;
-      slots[2].total = 3;
-      slots[3].total = 3;
-      slots[4].total = 2;
-      slots[5].total = 1;
-    }
-    // Level 12
-    if (level >= 12) {
-      slots[0].total = 4;
-      slots[1].total = 3;
-      slots[2].total = 3;
-      slots[3].total = 3;
-      slots[4].total = 2;
-      slots[5].total = 1;
-    }
-    // Level 13
-    if (level >= 13) {
-      slots[0].total = 4;
-      slots[1].total = 3;
-      slots[2].total = 3;
-      slots[3].total = 3;
-      slots[4].total = 2;
-      slots[5].total = 1;
-      slots[6].total = 1;
-    }
-    // Level 14
-    if (level >= 14) {
-      slots[0].total = 4;
-      slots[1].total = 3;
-      slots[2].total = 3;
-      slots[3].total = 3;
-      slots[4].total = 2;
-      slots[5].total = 1;
-      slots[6].total = 1;
-    }
-    // Level 15
-    if (level >= 15) {
-      slots[0].total = 4;
-      slots[1].total = 3;
-      slots[2].total = 3;
-      slots[3].total = 3;
-      slots[4].total = 2;
-      slots[5].total = 1;
-      slots[6].total = 1;
-      slots[7].total = 1;
-    }
-    // Level 16
-    if (level >= 16) {
-      slots[0].total = 4;
-      slots[1].total = 3;
-      slots[2].total = 3;
-      slots[3].total = 3;
-      slots[4].total = 2;
-      slots[5].total = 1;
-      slots[6].total = 1;
-      slots[7].total = 1;
-    }
-    // Level 17
-    if (level >= 17) {
-      slots[0].total = 4;
-      slots[1].total = 3;
-      slots[2].total = 3;
-      slots[3].total = 3;
-      slots[4].total = 2;
-      slots[5].total = 1;
-      slots[6].total = 1;
-      slots[7].total = 1;
-      slots[8].total = 1;
-    }
-    // Level 18
-    if (level >= 18) {
-      slots[0].total = 4;
-      slots[1].total = 3;
-      slots[2].total = 3;
-      slots[3].total = 3;
-      slots[4].total = 3;
-      slots[5].total = 1;
-      slots[6].total = 1;
-      slots[7].total = 1;
-      slots[8].total = 1;
-    }
-    // Level 19
-    if (level >= 19) {
-      slots[0].total = 4;
-      slots[1].total = 3;
-      slots[2].total = 3;
-      slots[3].total = 3;
-      slots[4].total = 3;
-      slots[5].total = 2;
-      slots[6].total = 1;
-      slots[7].total = 1;
-      slots[8].total = 1;
-    }
-    // Level 20
-    if (level >= 20) {
-      slots[0].total = 4;
-      slots[1].total = 3;
-      slots[2].total = 3;
-      slots[3].total = 3;
-      slots[4].total = 3;
-      slots[5].total = 2;
-      slots[6].total = 2;
-      slots[7].total = 1;
-      slots[8].total = 1;
-    }
   }
-  // Half casters: paladin, ranger
-  else if (characterClass === 'paladin' || characterClass === 'ranger') {
-    // Half casters start getting spell slots at level 2
-    if (level >= 2) {
-      slots[0].total = 2;
+  bonusSlots.forEach(bonus => {
+    const slotIndex = slots.findIndex(s => s.level === bonus.level);
+    if (slotIndex >= 0) {
+      slots[slotIndex].total += bonus.total;
     }
-    if (level >= 3) {
-      slots[0].total = 3;
-    }
-    if (level >= 5) {
-      slots[0].total = 4;
-      slots[1].total = 2;
-    }
-    if (level >= 7) {
-      slots[0].total = 4;
-      slots[1].total = 3;
-    }
-    if (level >= 9) {
-      slots[0].total = 4;
-      slots[1].total = 3;
-      slots[2].total = 2;
-    }
-    if (level >= 11) {
-      slots[0].total = 4;
-      slots[1].total = 3;
-      slots[2].total = 3;
-    }
-    if (level >= 13) {
-      slots[0].total = 4;
-      slots[1].total = 3;
-      slots[2].total = 3;
-      slots[3].total = 1;
-    }
-    if (level >= 15) {
-      slots[0].total = 4;
-      slots[1].total = 3;
-      slots[2].total = 3;
-      slots[3].total = 2;
-    }
-    if (level >= 17) {
-      slots[0].total = 4;
-      slots[1].total = 3;
-      slots[2].total = 3;
-      slots[3].total = 3;
-      slots[4].total = 1;
-    }
-    if (level >= 19) {
-      slots[0].total = 4;
-      slots[1].total = 3;
-      slots[2].total = 3;
-      slots[3].total = 3;
-      slots[4].total = 2;
-    }
-  }
+  });
 
   return slots;
 }
@@ -815,7 +615,6 @@ class KnownSpellsView extends ItemView {
   }
 }
 
-
 export default class DnDSpellbookPlugin extends Plugin {
 	settings: DnDSpellbookSettings & {
     spellFolderPath?: string;
@@ -873,7 +672,8 @@ export default class DnDSpellbookPlugin extends Plugin {
   // Initialize spell slots based on current class/level when plugin loads
   this.settings.spellSlots = calculateSpellSlots(
     this.settings.characterClass,
-    this.settings.characterLevel
+    this.settings.characterLevel,
+    this.settings.bonusSpellSlots
   );
   await this.saveSettings();
   // Register custom views
@@ -968,11 +768,15 @@ export default class DnDSpellbookPlugin extends Plugin {
   async loadSettings() {
 	this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
 	
+  if (!this.settings.bonusSpellSlots) {
+    this.settings.bonusSpellSlots = [];
+  }
 	// Ensure spell slots match character class and level
 	if (this.settings.characterClass && this.settings.characterLevel) {
 	  const newSlots = calculateSpellSlots(
 		this.settings.characterClass,
-		this.settings.characterLevel
+		this.settings.characterLevel,
+    this.settings.bonusSpellSlots 
 	  );
 	  
 	  // Create a mapping of used slots from current settings
@@ -1160,7 +964,8 @@ async importSpellsFromNotes() {
   updateSpellSlots() {
     const newSlots = calculateSpellSlots(
       this.settings.characterClass, 
-      this.settings.characterLevel
+      this.settings.characterLevel,
+      this.settings.bonusSpellSlots
     );
     
     // Create a mapping of used slots from current settings
@@ -1205,10 +1010,70 @@ class SpellbookSettingTab extends PluginSettingTab {
 		super(app, plugin);
 		this.plugin = plugin;
 	}
+  // Add this method to fix the first error
+  getSourceName(bonus: SpellSlot): string {
+    return bonus.source || "Unknown Source";
+}
 
 	display(): void {
 		const { containerEl } = this;
 		containerEl.empty();
+    containerEl.createEl('h3', { text: 'Bonus Spell Slots' });
+    containerEl.createEl('p', { text: 'Add extra spell slots from feats, magic items, or other sources' });
+    const bonusContainer = containerEl.createDiv({ cls: 'bonus-slots-container' });
+
+// Display existing bonus slots
+this.plugin.settings.bonusSpellSlots.forEach((bonus, index) => {
+  const bonusDiv = bonusContainer.createDiv({ cls: 'bonus-slot-item' });
+  bonusDiv.createEl('span', { 
+    text: `Level ${bonus.level}: +${bonus.total} slots (${this.getSourceName(bonus)})`
+  });
+  
+  const removeBtn = bonusDiv.createEl('button', {
+    text: 'Remove',
+    cls: 'remove-bonus-btn'
+  });
+  removeBtn.addEventListener('click', async () => {
+    this.plugin.settings.bonusSpellSlots.splice(index, 1);
+    await this.plugin.saveSettings();
+    this.plugin.updateSpellSlots();
+    this.display(); // Refresh the settings page
+  });
+});
+new Setting(containerEl)
+  .setName('Add Bonus Spell Slot')
+  .addDropdown(dropdown => {
+    for (let i = 1; i <= 9; i++) {
+      dropdown.addOption(i.toString(), `Level ${i}`);
+    }
+    dropdown.setValue("1");
+    return dropdown;
+  })
+  .addText(text => {
+    text.setPlaceholder("Source (e.g., 'Ring of Spell Storing')");
+    return text;
+  })
+  .addButton(button => {
+    button.setButtonText('Add');
+    button.onClick(async () => {
+      const dropdownElement = document.querySelector('.add-bonus-dropdown') as HTMLSelectElement;
+      const level = parseInt(dropdownElement?.value || "1");
+      const textElement = document.querySelector('.add-bonus-text') as HTMLInputElement;
+      const source = textElement?.value || "Unknown Source";    
+        
+      // Add new bonus slot
+      this.plugin.settings.bonusSpellSlots.push({
+        level,
+        total: 1,
+        used: 0,
+        source // Add a source property to track where the slot comes from
+      });
+      
+      await this.plugin.saveSettings();
+      this.plugin.updateSpellSlots();
+      this.display(); // Refresh the settings page
+    });
+  });
 
 		new Setting(containerEl)
 			.setName('Character Class')
@@ -1298,112 +1163,6 @@ class SpellbookSettingTab extends PluginSettingTab {
         await this.plugin.saveSettings();
       })
     );
-    // Continue with settings for levels 2-9...
-  // defaults:
-  // Level 2 spells
-new Setting(containerEl)
-.setName('Level 2 Spells Folder')
-.setDesc('Folder path for level 2 spells')
-.addText(text => text
-  .setPlaceholder('Level 2 spells folder path')
-  .setValue(this.plugin.settings.level2FolderPath || '')
-  .onChange(async (value) => {
-    this.plugin.settings.level2FolderPath = value;
-    await this.plugin.saveSettings();
-  })
-);
-
-// Level 3 spells
-new Setting(containerEl)
-.setName('Level 3 Spells Folder')
-.setDesc('Folder path for level 3 spells')
-.addText(text => text
-  .setPlaceholder('Level 3 spells folder path')
-  .setValue(this.plugin.settings.level3FolderPath || '')
-  .onChange(async (value) => {
-    this.plugin.settings.level3FolderPath = value;
-    await this.plugin.saveSettings();
-  })
-);
-
-// Level 4 spells
-new Setting(containerEl)
-.setName('Level 4 Spells Folder')
-.setDesc('Folder path for level 4 spells')
-.addText(text => text
-  .setPlaceholder('Level 4 spells folder path')
-  .setValue(this.plugin.settings.level4FolderPath || '')
-  .onChange(async (value) => {
-    this.plugin.settings.level4FolderPath = value;
-    await this.plugin.saveSettings();
-  })
-);
-
-// Level 5 spells
-new Setting(containerEl)
-.setName('Level 5 Spells Folder')
-.setDesc('Folder path for level 5 spells')
-.addText(text => text
-  .setPlaceholder('Level 5 spells folder path')
-  .setValue(this.plugin.settings.level5FolderPath || '')
-  .onChange(async (value) => {
-    this.plugin.settings.level5FolderPath = value;
-    await this.plugin.saveSettings();
-  })
-);
-
-// Level 6 spells
-new Setting(containerEl)
-.setName('Level 6 Spells Folder')
-.setDesc('Folder path for level 6 spells')
-.addText(text => text
-  .setPlaceholder('Level 6 spells folder path')
-  .setValue(this.plugin.settings.level6FolderPath || '')
-  .onChange(async (value) => {
-    this.plugin.settings.level6FolderPath = value;
-    await this.plugin.saveSettings();
-  })
-);
-
-// Level 7 spells
-new Setting(containerEl)
-.setName('Level 7 Spells Folder')
-.setDesc('Folder path for level 7 spells')
-.addText(text => text
-  .setPlaceholder('Level 7 spells folder path')
-  .setValue(this.plugin.settings.level7FolderPath || '')
-  .onChange(async (value) => {
-    this.plugin.settings.level7FolderPath = value;
-    await this.plugin.saveSettings();
-  })
-);
-
-// Level 8 spells
-new Setting(containerEl)
-.setName('Level 8 Spells Folder')
-.setDesc('Folder path for level 8 spells')
-.addText(text => text
-  .setPlaceholder('Level 8 spells folder path')
-  .setValue(this.plugin.settings.level8FolderPath || '')
-  .onChange(async (value) => {
-    this.plugin.settings.level8FolderPath = value;
-    await this.plugin.saveSettings();
-  })
-);
-
-// Level 9 spells
-new Setting(containerEl)
-.setName('Level 9 Spells Folder')
-.setDesc('Folder path for level 9 spells')
-.addText(text => text
-  .setPlaceholder('Level 9 spells folder path')
-  .setValue(this.plugin.settings.level9FolderPath || '')
-  .onChange(async (value) => {
-    this.plugin.settings.level9FolderPath = value;
-    await this.plugin.saveSettings();
-  })
-);
-      
     // Add a button to reset all spell slots
     new Setting(containerEl)
       .setName('Reset Spell Slots')
@@ -1425,6 +1184,7 @@ new Setting(containerEl)
     containerEl.createEl('p', { 
       text: `You currently know ${spellCount} spells and have ${preparedCount} prepared.` 
     });
+    
     
     new Setting(containerEl)
       .setName('Manage Spells')
