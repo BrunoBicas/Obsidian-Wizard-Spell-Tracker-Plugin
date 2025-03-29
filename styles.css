@@ -95,6 +95,26 @@ If your plugin does not need CSS, delete this file.
   background: #f9f9f9;
   transition: all 0.2s;
 }
+/* Extra uses badges and items */
+.extra-uses-badge {
+  display: inline-block;
+  background-color: #4caf50;
+  color: white;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+  margin-left: 8px;
+}
+
+.extra-use-item {
+  padding: 8px;
+  margin-bottom: 8px;
+  border-radius: 4px;
+  background-color: rgba(0, 0, 0, 0.05);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
 
 .spell-card:hover {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
@@ -352,23 +372,3 @@ h2 {
   padding-bottom: 8px;
   margin-bottom: 15px;
 }
-    .extra-uses-badge {
-      display: inline-block;
-      background-color: #4caf50;
-      color: white;
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-size: 12px;
-      margin-left: 8px;
-    }
-    
-    .extra-use-item {
-      padding: 8px;
-      margin-bottom: 8px;
-      border-radius: 4px;
-      background-color: rgba(0, 0, 0, 0.05);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
