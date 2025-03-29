@@ -27,7 +27,7 @@ interface DnDSpellbookSettings {
   knownSpells: Spell[];
   importSpellsFromNotes: boolean;
   spellFolderPath: string;
-  // defaults:
+  extraSpellUses: ExtraSpellUse[];
   cantripFolderPath: string;
   level1FolderPath: string;
   level2FolderPath: string;
@@ -47,6 +47,12 @@ interface Spell {
 	description: string;
 	prepared: boolean;
 }
+interface ExtraSpellUse {
+  spellName: string;
+  uses: number;
+  usesRemaining: number;
+  source?: string;
+}
 
 const DEFAULT_SETTINGS: DnDSpellbookSettings = {
 	characterClass: 'wizard',
@@ -65,7 +71,7 @@ const DEFAULT_SETTINGS: DnDSpellbookSettings = {
 	knownSpells: [],
   importSpellsFromNotes: false,
   spellFolderPath: '',
-  // defaults:
+  extraSpellUses: [],
   cantripFolderPath: '',
   level1FolderPath: '',
   level2FolderPath: '',
@@ -702,7 +708,17 @@ class KnownSpellsView extends ItemView {
           text: spell.name,
           cls: 'spell-name'
         });
-        
+        // Show extra uses badge if available
+        const extraUse = this.plugin.settings.extraSpellUses.find(
+          e => e.spellName.toLowerCase() === spell.name.toLowerCase() && e.usesRemaining > 0
+        );
+        if (extraUse) {
+          const extraUsesBadge = spellDiv.createDiv({ cls: 'extra-uses-badge' });
+          extraUsesBadge.createEl('span', { 
+            text: `+${extraUse.usesRemaining} free uses` 
+          });
+          extraUsesBadge.setAttribute('title', `Extra uses from ${extraUse.source || 'unknown'}`);
+        }
         // Description with toggle
         const descriptionContainer = spellDiv.createDiv({ cls: 'spell-description-container' });
         const descriptionToggle = descriptionContainer.createEl('button', {
@@ -914,6 +930,53 @@ export default class DnDSpellbookPlugin extends Plugin {
 		document.head.appendChild(styleElement);
 	  }
 
+    async scanNotesForTaggedSpells() {
+  const files = this.app.vault.getMarkdownFiles();
+  let importCount = 0;
+  
+  for (const file of files) {
+    const content = await this.app.vault.read(file);
+    
+    // Look for tags in the format #NspellName (e.g., #1fireball, #3magicMissile)
+    const tagMatches = content.matchAll(/#(\d+)([a-zA-Z]+)/g);
+    
+    for (const match of tagMatches) {
+      const uses = parseInt(match[1]);
+      const spellName = match[2];
+      
+      // Check if this spell exists in the known spells
+      const knownSpell = this.settings.knownSpells.find(
+        s => s.name.toLowerCase() === spellName.toLowerCase()
+      );
+      
+      if (knownSpell) {
+        // Check if we already have this extra spell use
+        const existingExtraUse = this.settings.extraSpellUses.find(
+          e => e.spellName.toLowerCase() === spellName.toLowerCase()
+        );
+        
+        if (existingExtraUse) {
+          existingExtraUse.uses = uses;
+          existingExtraUse.usesRemaining = uses;
+          existingExtraUse.source = file.basename;
+        } else {
+          // Add new extra spell use
+          this.settings.extraSpellUses.push({
+            spellName: knownSpell.name,
+            uses: uses,
+            usesRemaining: uses,
+            source: file.basename
+          });
+          importCount++;
+        }
+      }
+    }
+  }
+  
+  await this.saveSettings();
+  return importCount;
+}
+
   async activateView() {
     this.updateSpellSlots();
     
@@ -1053,11 +1116,29 @@ export default class DnDSpellbookPlugin extends Plugin {
     this.settings.spellSlots.forEach(slot => {
       slot.used = 0;
     });
-    this.saveSettings();
-  }
+    // Restore all extra spell uses too
+    this.settings.extraSpellUses.forEach(extraUse => {
+      extraUse.usesRemaining = extraUse.uses;
+  });
+  
+  this.saveSettings();
+}
 
   //cast spells
   castSpell(spell: Spell) {
+    // First check if we have an extra use available
+    const extraUse = this.settings.extraSpellUses.find(
+        e => e.spellName.toLowerCase() === spell.name.toLowerCase() && e.usesRemaining > 0
+    );
+    
+    if (extraUse) {
+        extraUse.usesRemaining--;
+        this.saveSettings();
+        new Notice(`Cast ${spell.name} using extra use from ${extraUse.source || 'unknown source'} (${extraUse.usesRemaining}/${extraUse.uses} remaining)`);
+        return;
+    }
+    
+    // Original spell casting logic
     if (spell.level === 0) {
         new Notice(`Cast ${spell.name} (Cantrip)`);
         return;
@@ -1479,6 +1560,43 @@ new Setting(containerEl)
     await this.plugin.saveSettings();
   })
 );
+// Extra Spell Uses section
+containerEl.createEl('h3', { text: 'Extra Spell Uses (from Tags)' });
+containerEl.createEl('p', { 
+  text: 'Spells with extra uses from tags like #1fireball' 
+});
+
+const extraUsesContainer = containerEl.createDiv({ cls: 'extra-uses-container' });
+
+// Display existing extra spell uses
+this.plugin.settings.extraSpellUses.forEach((extraUse, index) => {
+  const extraUseDiv = extraUsesContainer.createDiv({ cls: 'extra-use-item' });
+  extraUseDiv.createEl('span', { 
+    text: `${extraUse.spellName}: ${extraUse.usesRemaining}/${extraUse.uses} uses (from ${extraUse.source || 'unknown'})` 
+  });
+  
+  const removeBtn = extraUseDiv.createEl('button', {
+    text: 'Remove',
+    cls: 'remove-extra-use-btn'
+  });
+  removeBtn.addEventListener('click', async () => {
+    this.plugin.settings.extraSpellUses.splice(index, 1);
+    await this.plugin.saveSettings();
+    this.display(); // Refresh the settings page
+  });
+});
+
+new Setting(containerEl)
+  .setName('Scan Notes for Tagged Spells')
+  .setDesc('Look for tags like #1fireball in your notes to find extra spell uses')
+  .addButton(button => button
+    .setButtonText('Scan Now')
+    .onClick(async () => {
+      const count = await this.plugin.scanNotesForTaggedSpells();
+      new Notice(`Found ${count} tagged spells with extra uses`);
+      this.display(); // Refresh the settings page
+    })
+  );
 
     // Add a button to reset all spell slots
     new Setting(containerEl)
