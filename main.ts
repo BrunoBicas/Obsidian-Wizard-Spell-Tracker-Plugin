@@ -969,11 +969,13 @@ export default class DnDSpellbookPlugin extends Plugin {
         const content = await this.app.vault.read(file);
         
         // Look for tags in the format #NspellName (e.g., #1fireball, #3magicMissile)
-        const tagMatches = content.matchAll(/#(\d+)([a-zA-Z]+)/g);
+        const tagMatches = content.matchAll(/#(\d+)([a-zA-Z_]+)/g);
         
         for (const match of tagMatches) {
           const uses = parseInt(match[1]);
-          const spellName = match[2];
+          const rawSpellName = match[2];
+          const spellName = rawSpellName.replace(/_/g, ' ');
+
           
           // Check if this spell exists in the known spells
           const knownSpell = this.settings.knownSpells.find(
