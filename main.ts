@@ -13,10 +13,11 @@ const SPELLBOOK_VIEW_TYPE = 'dnd-spellbook-view';
 const KNOWN_SPELLS_VIEW_TYPE = 'dnd-known-spells-view';
 
 interface SpellSlot {
-	level: number;
-	total: number;
-	used: number;
+  level: number;
+  total: number;
+  used: number;
   source?: string;
+  autoScanned?: boolean; // Added for bonus slots auto-scan
 }
 
 interface DnDSpellbookSettings {
@@ -1013,6 +1014,51 @@ export default class DnDSpellbookPlugin extends Plugin {
       await this.saveSettings();
       return importCount;
     }
+    async scanNotesForBonusSpellSlots() {
+      const files = this.app.vault.getMarkdownFiles();
+      let importCount = 0;
+    
+      // Remove previously auto-scanned bonus slots, but keep manually added ones.
+      // We mark auto-generated bonus slots with a property: autoScanned: true.
+      this.settings.bonusSpellSlots = this.settings.bonusSpellSlots.filter(slot => !slot.autoScanned);
+    
+      // Define a regex to capture tags in the format: #<amount>_spellSlot_<level>
+      // For example, "#1_spellSlot_3" adds 1 bonus slot at level 3.
+      const bonusTagRegex = /#(\d+)[_]?spell[_]?slot[_]?(\d+)/gi;
+    
+      for (const file of files) {
+        const content = await this.app.vault.read(file);
+        const bonusTagMatches = content.matchAll(bonusTagRegex);
+        for (const match of bonusTagMatches) {
+          const slotsToAdd = parseInt(match[1]);
+          const slotLevel = parseInt(match[2]);
+    
+          // Look for an existing bonus slot entry for this level that was auto-scanned
+          let existingBonusSlot = this.settings.bonusSpellSlots.find(slot => slot.level === slotLevel && slot.autoScanned);
+          if (existingBonusSlot) {
+            // Accumulate the bonus slots if the tag is found in another file
+            existingBonusSlot.total += slotsToAdd;
+            // Optionally, concatenate source names if desired:
+            existingBonusSlot.source = existingBonusSlot.source 
+              ? `${existingBonusSlot.source}, ${file.basename}` 
+              : file.basename;
+          } else {
+            // Create a new bonus slot entry from the scan
+            this.settings.bonusSpellSlots.push({
+              level: slotLevel,
+              total: slotsToAdd,
+              used: 0,
+              source: file.basename,
+              autoScanned: true
+            });
+            importCount++;
+          }
+        }
+      }
+    
+      await this.saveSettings();
+      return importCount;
+    }
     
 
   async activateView() {
@@ -1356,6 +1402,17 @@ this.plugin.settings.bonusSpellSlots.forEach((bonus, index) => {
   bonusDiv.createEl('span', { 
     text: `Level ${bonus.level}: +${bonus.total} slots (${this.getSourceName(bonus)})`
   });
+  new Setting(containerEl)
+  .setName('Scan for Bonus Spell Slots')
+  .setDesc('Scan notes for bonus spell slot tags (e.g., "#1_spellSlot_3") and update auto-scanned bonus slots.')
+  .addButton(button => button
+    .setButtonText('Scan Bonus Slots')
+    .onClick(async () => {
+      const count = await this.plugin.scanNotesForBonusSpellSlots();
+      new Notice(`Scanned and added bonus slots from ${count} tag occurrences.`);
+      this.display(); // Refresh the settings page
+    })
+  );
   
   const removeBtn = bonusDiv.createEl('button', {
     text: 'Remove',
