@@ -657,7 +657,16 @@ class KnownSpellsView extends ItemView {
       text: '+ Add New Spell',
       cls: 'add-spell-btn'
     });
+
+    //View Unknown Spells
     addSpellBtn.addEventListener('click', () => this.openAddSpellModal());
+    const unknownSpellsBtn = navButtons.createEl('button', {
+      text: 'View Unknown Spells',
+      cls: 'nav-btn'
+    });
+    unknownSpellsBtn.addEventListener('click', () => {
+      this.plugin.activateUnknownSpellsView();
+    });
     
     // Filter controls
     const filterContainer = scrollContainer.createDiv({ cls: 'filter-container' });

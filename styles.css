@@ -372,3 +372,60 @@ h2 {
   padding-bottom: 8px;
   margin-bottom: 15px;
 }
+/* Unknown Spells Container */
+.unknown-spells-container {
+  padding: 1em;
+  background-color: #f8f8f8;
+}
+
+/* Spell Card for Unknown Spells */
+.spell-card.unknown {
+  border: 1px solid #ccc;
+  background-color: #fff;
+  padding: 0.75em;
+  margin-bottom: 1em;
+  border-radius: 4px;
+}
+
+/* Spell Name Styling */
+.spell-card.unknown .spell-name {
+  font-size: 1.2em;
+  margin-bottom: 0.5em;
+}
+
+/* Spell Description Styling */
+.spell-card.unknown .spell-description {
+  font-size: 0.95em;
+  color: #555;
+  margin-bottom: 0.5em;
+}
+
+/* Learn Spell Button */
+.learn-spell-btn {
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  padding: 0.5em 1em;
+  cursor: pointer;
+  border-radius: 3px;
+}
+
+.learn-spell-btn:hover {
+  background-color: #45a049;
+}
+
+/* Navigation Button (if needed) */
+.nav-btn {
+  background-color: #007acc;
+  color: white;
+  border: none;
+  padding: 0.5em 1em;
+  cursor: pointer;
+  margin-right: 5px;
+  border-radius: 3px;
+}
+
+.nav-btn:hover {
+  background-color: #005fa3;
+}
+
