@@ -469,12 +469,40 @@ class SpellbookView extends ItemView {
 				text: `${spell.name} (Level ${spell.level})`,
 				cls: 'spell-name'
 			});
+      
+      // Add extra spell uses badge if available
+const extraUse = this.plugin.settings.extraSpellUses.find(
+  e => e.spellName.toLowerCase() === spell.name.toLowerCase() && e.usesRemaining > 0
+);
+if (extraUse) {
+  const extraUsesBadge = spellDiv.createDiv({ cls: 'extra-uses-badge' });
+  extraUsesBadge.createEl('span', { 
+    text: `+${extraUse.usesRemaining} free uses` 
+  });
+  extraUsesBadge.setAttribute('title', `Extra uses from ${extraUse.source || 'unknown'}`);
+}
 
-			// Description
-			spellDiv.createEl('p', { 
-				text: spell.description,
-				cls: 'spell-description'
-			});
+
+			// Description toggle container
+const descriptionContainer = spellDiv.createDiv({ cls: 'spell-description-container' });
+const descriptionToggle = descriptionContainer.createEl('button', {
+  text: 'Show Description',
+  cls: 'description-toggle'
+});
+const descriptionDiv = descriptionContainer.createDiv({ 
+  cls: 'spell-description hidden' 
+});
+descriptionDiv.createEl('p', { text: spell.description });
+
+descriptionToggle.addEventListener('click', () => {
+  if (descriptionDiv.classList.contains('hidden')) {
+    descriptionDiv.classList.remove('hidden');
+    descriptionToggle.textContent = 'Hide Description';
+  } else {
+    descriptionDiv.classList.add('hidden');
+    descriptionToggle.textContent = 'Show Description';
+  }
+});
 
 			// Unprepare Button
 			const unprepareBtn = spellDiv.createEl('button', {
