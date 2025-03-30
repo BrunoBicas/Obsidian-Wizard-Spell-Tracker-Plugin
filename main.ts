@@ -1402,17 +1402,6 @@ this.plugin.settings.bonusSpellSlots.forEach((bonus, index) => {
   bonusDiv.createEl('span', { 
     text: `Level ${bonus.level}: +${bonus.total} slots (${this.getSourceName(bonus)})`
   });
-  new Setting(containerEl)
-  .setName('Scan for Bonus Spell Slots')
-  .setDesc('Scan notes for bonus spell slot tags (e.g., "#1_spellSlot_3") and update auto-scanned bonus slots.')
-  .addButton(button => button
-    .setButtonText('Scan Bonus Slots')
-    .onClick(async () => {
-      const count = await this.plugin.scanNotesForBonusSpellSlots();
-      new Notice(`Scanned and added bonus slots from ${count} tag occurrences.`);
-      this.display(); // Refresh the settings page
-    })
-  );
   
   const removeBtn = bonusDiv.createEl('button', {
     text: 'Remove',
@@ -1425,6 +1414,17 @@ this.plugin.settings.bonusSpellSlots.forEach((bonus, index) => {
     this.display(); // Refresh the settings page
   });
 });
+new Setting(containerEl)
+  .setName('Scan for Bonus Spell Slots')
+  .setDesc('Scan notes for bonus spell slot tags (e.g., "#1_spellSlot_3") and update auto-scanned bonus slots.')
+  .addButton(button => button
+    .setButtonText('Scan Bonus Slots')
+    .onClick(async () => {
+      const count = await this.plugin.scanNotesForBonusSpellSlots();
+      new Notice(`Scanned and added bonus slots from ${count} tag occurrences.`);
+      this.display(); // Refresh the settings page
+    })
+  );
 new Setting(containerEl)
   .setName('Add Bonus Spell Slot')
   .addDropdown(dropdown => {
