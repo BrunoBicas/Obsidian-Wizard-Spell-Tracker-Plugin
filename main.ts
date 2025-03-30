@@ -11,6 +11,8 @@ import {
 
 const SPELLBOOK_VIEW_TYPE = 'dnd-spellbook-view';
 const KNOWN_SPELLS_VIEW_TYPE = 'dnd-known-spells-view';
+const UNKNOWN_SPELLS_VIEW_TYPE = 'dnd-unknown-spells-view';
+
 
 interface SpellSlot {
   level: number;
@@ -26,6 +28,7 @@ interface DnDSpellbookSettings {
   spellSlots: SpellSlot[];
   bonusSpellSlots: SpellSlot[];
   knownSpells: Spell[];
+  unknownSpells: Spell[];
   importSpellsFromNotes: boolean;
   spellFolderPath: string;
   extraSpellUses: ExtraSpellUse[];
@@ -70,6 +73,7 @@ const DEFAULT_SETTINGS: DnDSpellbookSettings = {
     { level: 9, total: 0, used: 0 }
 	],
 	knownSpells: [],
+  unknownSpells: [],
   importSpellsFromNotes: false,
   spellFolderPath: '',
   extraSpellUses: [],
@@ -869,6 +873,76 @@ class KnownSpellsView extends ItemView {
   }
 }
 
+class UnknownSpellsView extends ItemView {
+  plugin: DnDSpellbookPlugin;
+
+  constructor(leaf: WorkspaceLeaf, plugin: DnDSpellbookPlugin) {
+    super(leaf);
+    this.plugin = plugin;
+  }
+
+  getViewType(): string {
+    return UNKNOWN_SPELLS_VIEW_TYPE;
+  }
+
+  getDisplayText(): string {
+    return "D&D Unknown Spells";
+  }
+
+  getIcon(): string {
+    return "question-mark"; // change icon as desired
+  }
+
+  async onOpen(): Promise<void> {
+    const container = this.containerEl.createDiv({ cls: 'unknown-spells-container modern-spellbook-layout' });
+    
+    // Add scrollable content wrapper
+    const scrollContainer = container.createDiv({ cls: 'spellbook-scroll-container' });
+    scrollContainer.style.maxHeight = '70vh';
+    scrollContainer.style.overflowY = 'auto';
+    scrollContainer.style.paddingRight = '10px';
+    
+    // Header for unknown spells
+    scrollContainer.createEl('h2', { text: 'Unknown Spells' });
+    
+    // Check if there are any unknown spells
+    if (!this.plugin.settings.unknownSpells || this.plugin.settings.unknownSpells.length === 0) {
+      scrollContainer.createEl('p', { text: 'No unknown spells available.' });
+      return;
+    }
+    
+    // Render each unknown spell
+    this.plugin.settings.unknownSpells.forEach(spell => {
+      const spellDiv = scrollContainer.createDiv({ cls: 'spell-card unknown' });
+      
+      // Spell Name
+      spellDiv.createEl('h3', { text: spell.name, cls: 'spell-name' });
+      
+      // Optionally add a description if available
+      if (spell.description) {
+        spellDiv.createEl('p', { text: spell.description, cls: 'spell-description' });
+      }
+      
+      // Button to "Learn" the spell
+      const learnBtn = spellDiv.createEl('button', { text: 'Learn Spell', cls: 'learn-spell-btn' });
+      learnBtn.addEventListener('click', () => {
+        this.plugin.learnSpell(spell.id);
+        this.refresh();
+      });
+    });
+  }
+
+  async onClose(): Promise<void> {
+    this.containerEl.empty();
+  }
+
+  refresh() {
+    this.containerEl.empty();
+    this.onOpen();
+  }
+}
+
+
 export default class DnDSpellbookPlugin extends Plugin {
 	settings: DnDSpellbookSettings & {
     spellFolderPath?: string;
@@ -939,6 +1013,11 @@ export default class DnDSpellbookPlugin extends Plugin {
     KNOWN_SPELLS_VIEW_TYPE,
     (leaf) => new KnownSpellsView(leaf, this)
   );
+  this.registerView(
+    UNKNOWN_SPELLS_VIEW_TYPE,
+    (leaf) => new UnknownSpellsView(leaf, this)
+  );
+  
     
 		// Add ribbon icon to open spellbook
 		this.addRibbonIcon('book', 'D&D Spellbook', async () => {
@@ -958,6 +1037,18 @@ export default class DnDSpellbookPlugin extends Plugin {
 		styleElement.href = 'obsidian://css/plugins/dnd-spellbook/styles.css';
 		document.head.appendChild(styleElement);
 	  }
+
+    learnSpell(spellId: string) {
+      // Find the unknown spell by its ID.
+      const index = this.settings.unknownSpells.findIndex(s => s.id === spellId);
+      if (index !== -1) {
+        const spell = this.settings.unknownSpells.splice(index, 1)[0];
+        // Optionally, adjust the spell properties (like setting a default level) if needed.
+        this.settings.knownSpells.push(spell);
+        this.saveSettings();
+        new Notice(`Learned spell: ${spell.name}`);
+      }
+    }
 
     async scanNotesForTaggedSpells() {
       const files = this.app.vault.getMarkdownFiles();
@@ -1120,6 +1211,29 @@ export default class DnDSpellbookPlugin extends Plugin {
         console.error('Could not create or find a leaf for the Known Spells view');
     }
   }
+  
+  async activateUnknownSpellsView() {
+    const { workspace } = this.app;
+  
+    const leaves = workspace.getLeavesOfType(UNKNOWN_SPELLS_VIEW_TYPE);
+  
+    let leaf: WorkspaceLeaf | null = null;
+    if (leaves.length > 0) {
+      leaf = leaves[0];
+    } else {
+      leaf = workspace.getRightLeaf(false);
+    }
+  
+    if (leaf) {
+      await leaf.setViewState({
+        type: UNKNOWN_SPELLS_VIEW_TYPE,
+        active: true
+      });
+      workspace.revealLeaf(leaf);
+    } else {
+      console.error('Could not create or find a leaf for the Unknown Spells view');
+    }
+  }  
 
   async loadSettings() {
 	this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
@@ -1318,10 +1432,10 @@ async importSpellsFromNotes() {
         }
         
         // Add the new spell
-        this.addSpell({
+        this.settings.unknownSpells.push({
           id: Date.now().toString(),
-          name: spellName,
-          level: spellLevel,
+          name: spellName,   // ensure you get spellName (and convert underscores to spaces if needed)
+          level: spellLevel, // as determined from folder or content
           description: content,
           prepared: false
         });
@@ -1461,7 +1575,7 @@ new Setting(containerEl)
       this.display(); // Refresh the settings page
     });
   });
-
+  
 		new Setting(containerEl)
 			.setName('Character Class')
 			.setDesc('Select your character\'s class')
@@ -1482,6 +1596,25 @@ new Setting(containerEl)
           new Notice('Spell slots updated based on character class');
 				})
 			);
+      
+      new Setting(containerEl)
+  .setName('Learn Unknown Spells')
+  .setDesc('Select a spell from the Unknown Spells list to learn it.')
+  .addDropdown(dropdown => {
+    dropdown.addOption('', 'Select a spell...');
+    // Populate the dropdown with unknown spells
+    this.plugin.settings.unknownSpells.forEach(spell => {
+      dropdown.addOption(spell.id, spell.name);
+    });
+    dropdown.onChange(async (value: string) => {
+      if (value) {
+        this.plugin.learnSpell(value);
+        // Refresh the settings view to update the lists.
+        this.display();
+      }
+    });
+  });
+
       
       new Setting(containerEl)
       .setName('Import Spells from Notes')
@@ -1655,6 +1788,16 @@ new Setting(containerEl)
     await this.plugin.saveSettings();
   })
 );
+new Setting(containerEl)
+      .setName('Import Now')
+      .setDesc('Import spells from notes based on the folder settings above')
+      .addButton(button => button
+        .setButtonText('Import Spells')
+        .onClick(async () => {
+          const count = await this.plugin.importSpellsFromNotes();
+          new Notice(`Imported ${count} spells from configured folders`);
+        })
+      );
 // Extra Spell Uses section
 containerEl.createEl('h3', { text: 'Extra Spell Uses (from Tags)' });
 containerEl.createEl('p', { 
@@ -1726,14 +1869,14 @@ new Setting(containerEl)
         })
       );
       new Setting(containerEl)
-      .setName('Import Now')
-      .setDesc('Import spells from notes based on the folder settings above')
-      .addButton(button => button
-        .setButtonText('Import Spells')
-        .onClick(async () => {
-          const count = await this.plugin.importSpellsFromNotes();
-          new Notice(`Imported ${count} spells from configured folders`);
-        })
-      );
+  .setName('Unknown Spells')
+  .setDesc('View and manage unknown spells.')
+  .addButton(button => button
+    .setButtonText('Open Unknown Spells')
+    .onClick(async () => {
+      await this.plugin.activateUnknownSpellsView();
+    })
+  );
+
 	}
 }
