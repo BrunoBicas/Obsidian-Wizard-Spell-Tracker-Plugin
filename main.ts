@@ -469,7 +469,7 @@ class SpellbookView extends ItemView {
 				text: `${spell.name} (Level ${spell.level})`,
 				cls: 'spell-name'
 			});
-      
+
       // Add extra spell uses badge if available
 const extraUse = this.plugin.settings.extraSpellUses.find(
   e => e.spellName.toLowerCase() === spell.name.toLowerCase() && e.usesRemaining > 0
@@ -959,51 +959,59 @@ export default class DnDSpellbookPlugin extends Plugin {
 	  }
 
     async scanNotesForTaggedSpells() {
-  const files = this.app.vault.getMarkdownFiles();
-  let importCount = 0;
-  
-  for (const file of files) {
-    const content = await this.app.vault.read(file);
-    
-    // Look for tags in the format #NspellName (e.g., #1fireball, #3magicMissile)
-    const tagMatches = content.matchAll(/#(\d+)([a-zA-Z]+)/g);
-    
-    for (const match of tagMatches) {
-      const uses = parseInt(match[1]);
-      const spellName = match[2];
+      const files = this.app.vault.getMarkdownFiles();
+      let importCount = 0;
       
-      // Check if this spell exists in the known spells
-      const knownSpell = this.settings.knownSpells.find(
-        s => s.name.toLowerCase() === spellName.toLowerCase()
-      );
+      // Clear previous extra spell uses so that a re‐scan won't add duplicates
+      this.settings.extraSpellUses = [];
       
-      if (knownSpell) {
-        // Check if we already have this extra spell use
-        const existingExtraUse = this.settings.extraSpellUses.find(
-          e => e.spellName.toLowerCase() === spellName.toLowerCase()
-        );
+      for (const file of files) {
+        const content = await this.app.vault.read(file);
         
-        if (existingExtraUse) {
-          existingExtraUse.uses = uses;
-          existingExtraUse.usesRemaining = uses;
-          existingExtraUse.source = file.basename;
-        } else {
-          // Add new extra spell use
-          this.settings.extraSpellUses.push({
-            spellName: knownSpell.name,
-            uses: uses,
-            usesRemaining: uses,
-            source: file.basename
-          });
-          importCount++;
+        // Look for tags in the format #NspellName (e.g., #1fireball, #3magicMissile)
+        const tagMatches = content.matchAll(/#(\d+)([a-zA-Z]+)/g);
+        
+        for (const match of tagMatches) {
+          const uses = parseInt(match[1]);
+          const spellName = match[2];
+          
+          // Check if this spell exists in the known spells
+          const knownSpell = this.settings.knownSpells.find(
+            s => s.name.toLowerCase() === spellName.toLowerCase()
+          );
+          
+          if (knownSpell) {
+            // Look for an extra use entry for this spell
+            const existingExtraUse = this.settings.extraSpellUses.find(
+              e => e.spellName.toLowerCase() === spellName.toLowerCase()
+            );
+            
+            if (existingExtraUse) {
+              // Add new uses from this file to the already collected uses.
+              existingExtraUse.uses += uses;
+              existingExtraUse.usesRemaining += uses;
+              // Optionally, append the source name
+              existingExtraUse.source = existingExtraUse.source 
+                ? `${existingExtraUse.source}, ${file.basename}`
+                : file.basename;
+            } else {
+              // Create a new extra spell use entry
+              this.settings.extraSpellUses.push({
+                spellName: knownSpell.name,
+                uses: uses,
+                usesRemaining: uses,
+                source: file.basename
+              });
+              importCount++;
+            }
+          }
         }
       }
+      
+      await this.saveSettings();
+      return importCount;
     }
-  }
-  
-  await this.saveSettings();
-  return importCount;
-}
+    
 
   async activateView() {
     this.updateSpellSlots();
