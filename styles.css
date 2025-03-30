@@ -429,3 +429,37 @@ h2 {
   background-color: #005fa3;
 }
 
+/* Styles for the header inside unknown spell cards */
+.spell-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+/* Spell name styling */
+.spell-name {
+  font-size: 1.2em;
+  margin: 0;
+}
+
+/* Spell level styling */
+.spell-level {
+  font-size: 0.9em;
+  color: #777;
+  margin-left: 0.5em;
+}
+
+/* Learn Spell Button */
+.learn-spell-btn {
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  padding: 0.5em 1em;
+  cursor: pointer;
+  border-radius: 3px;
+}
+
+.learn-spell-btn:hover {
+  background-color: #45a049;
+}
+

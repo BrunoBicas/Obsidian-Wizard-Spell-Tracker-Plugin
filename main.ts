@@ -905,6 +905,18 @@ class UnknownSpellsView extends ItemView {
   async onOpen(): Promise<void> {
     const container = this.containerEl.createDiv({ cls: 'unknown-spells-container modern-spellbook-layout' });
     
+    // Navigation buttons container
+    const navButtons = container.createDiv({ cls: 'spellbook-nav-buttons' });
+    // "Back to Spellbook" button:
+    const backButton = navButtons.createEl('button', {
+      text: 'Back to Spellbook',
+      cls: 'nav-btn'
+    });
+    backButton.addEventListener('click', () => {
+      // Activate the main Spellbook view
+      this.plugin.activateView();
+    });
+  
     // Add scrollable content wrapper
     const scrollContainer = container.createDiv({ cls: 'spellbook-scroll-container' });
     scrollContainer.style.maxHeight = '70vh';
@@ -914,32 +926,35 @@ class UnknownSpellsView extends ItemView {
     // Header for unknown spells
     scrollContainer.createEl('h2', { text: 'Unknown Spells' });
     
-    // Check if there are any unknown spells
     if (!this.plugin.settings.unknownSpells || this.plugin.settings.unknownSpells.length === 0) {
       scrollContainer.createEl('p', { text: 'No unknown spells available.' });
       return;
     }
     
     // Render each unknown spell
-    this.plugin.settings.unknownSpells.forEach(spell => {
-      const spellDiv = scrollContainer.createDiv({ cls: 'spell-card unknown' });
-      
-      // Spell Name
-      spellDiv.createEl('h3', { text: spell.name, cls: 'spell-name' });
-      
-      // Optionally add a description if available
-      if (spell.description) {
-        spellDiv.createEl('p', { text: spell.description, cls: 'spell-description' });
-      }
-      
-      // Button to "Learn" the spell
-      const learnBtn = spellDiv.createEl('button', { text: 'Learn Spell', cls: 'learn-spell-btn' });
-      learnBtn.addEventListener('click', () => {
-        this.plugin.learnSpell(spell.id);
-        this.refresh();
-      });
-    });
+this.plugin.settings.unknownSpells.forEach(spell => {
+  const spellDiv = scrollContainer.createDiv({ cls: 'spell-card unknown' });
+  
+  // Create a header container for name and level
+  const headerDiv = spellDiv.createDiv({ cls: 'spell-header' });
+  headerDiv.createEl('h3', { text: spell.name, cls: 'spell-name' });
+  headerDiv.createEl('span', { text: `Level ${spell.level}`, cls: 'spell-level' });
+  
+  // Optionally add a description if available
+  if (spell.description) {
+    spellDiv.createEl('p', { text: spell.description, cls: 'spell-description' });
   }
+  
+  // Button to "Learn" the spell (moves it from unknown to known)
+  const learnBtn = spellDiv.createEl('button', { text: 'Learn Spell', cls: 'learn-spell-btn' });
+  learnBtn.addEventListener('click', () => {
+    this.plugin.learnSpell(spell.id);
+    // Immediately refresh this view so the spell disappears from unknowns
+    this.refresh();
+  });
+});
+  }
+  
 
   async onClose(): Promise<void> {
     this.containerEl.empty();
