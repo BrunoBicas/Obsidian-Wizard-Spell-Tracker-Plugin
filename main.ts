@@ -903,6 +903,7 @@ class UnknownSpellsView extends ItemView {
   }
 
   async onOpen(): Promise<void> {
+    // Create the main container with navigation
     const container = this.containerEl.createDiv({ cls: 'unknown-spells-container modern-spellbook-layout' });
     
     // Navigation buttons container
@@ -913,47 +914,96 @@ class UnknownSpellsView extends ItemView {
       cls: 'nav-btn'
     });
     backButton.addEventListener('click', () => {
-      // Activate the main Spellbook view
       this.plugin.activateView();
     });
-  
+    
+    // Create a filter control to choose a level (1-9) or All Levels
+    const filterContainer = container.createDiv({ cls: 'filter-container' });
+    filterContainer.createEl('label', { text: 'Filter by level: ' });
+    const levelFilter = filterContainer.createEl('select');
+    levelFilter.createEl('option', { text: 'All Levels', value: 'all' });
+    for (let i = 1; i <= 9; i++) {
+      levelFilter.createEl('option', { text: `Level ${i}`, value: i.toString() });
+    }
+    
     // Add scrollable content wrapper
     const scrollContainer = container.createDiv({ cls: 'spellbook-scroll-container' });
     scrollContainer.style.maxHeight = '70vh';
     scrollContainer.style.overflowY = 'auto';
     scrollContainer.style.paddingRight = '10px';
     
-    // Header for unknown spells
+    // Header for the view
     scrollContainer.createEl('h2', { text: 'Unknown Spells' });
     
-    if (!this.plugin.settings.unknownSpells || this.plugin.settings.unknownSpells.length === 0) {
-      scrollContainer.createEl('p', { text: 'No unknown spells available.' });
-      return;
-    }
-    
-    // Render each unknown spell
-this.plugin.settings.unknownSpells.forEach(spell => {
-  const spellDiv = scrollContainer.createDiv({ cls: 'spell-card unknown' });
-  
-  // Create a header container for name and level
-  const headerDiv = spellDiv.createDiv({ cls: 'spell-header' });
-  headerDiv.createEl('h3', { text: spell.name, cls: 'spell-name' });
-  headerDiv.createEl('span', { text: `Level ${spell.level}`, cls: 'spell-level' });
-  
-  // Optionally add a description if available
-  if (spell.description) {
-    spellDiv.createEl('p', { text: spell.description, cls: 'spell-description' });
+    // Function to render unknown spells with an optional level filter.
+    const renderUnknownSpells = (filterLevel: string) => {
+      // Remove any previously rendered groups
+      scrollContainer.querySelectorAll('.unknown-spell-group').forEach(e => e.remove());
+      
+      // Get all unknown spells from settings
+      let spells = this.plugin.settings.unknownSpells || [];
+      // If filtering, only keep spells with the chosen level.
+      if (filterLevel !== 'all') {
+        const levelNum = parseInt(filterLevel);
+        spells = spells.filter(s => s.level === levelNum);
+      }
+      // Sort the spells by level (ascending)
+      spells = spells.sort((a, b) => a.level - b.level);
+      
+      // Group spells by level (levels 1 to 9)
+      // Explicitly type the grouping object as a Record mapping number keys to arrays of Spell
+const spellsByLevel: { [key: number]: Spell[] } = {};
+
+// Also provide an explicit type for the callback parameter 'spell'
+spells.forEach((spell: Spell) => {
+  const lvl = spell.level;
+  if (!spellsByLevel[lvl]) {
+    spellsByLevel[lvl] = [];
   }
-  
-  // Button to "Learn" the spell (moves it from unknown to known)
-  const learnBtn = spellDiv.createEl('button', { text: 'Learn Spell', cls: 'learn-spell-btn' });
-  learnBtn.addEventListener('click', () => {
-    this.plugin.learnSpell(spell.id);
-    // Immediately refresh this view so the spell disappears from unknowns
-    this.refresh();
-  });
+  spellsByLevel[lvl].push(spell);
 });
+
+      
+      // Render groups for levels 1 to 9 in order.
+      for (let level = 1; level <= 9; level++) {
+        if (spellsByLevel[level] && spellsByLevel[level].length > 0) {
+          const levelSection = scrollContainer.createDiv({ cls: 'unknown-spell-group' });
+          levelSection.createEl('h3', { text: `Level ${level} Spells` });
+          
+          spellsByLevel[level].forEach(spell => {
+            const spellDiv = levelSection.createDiv({ cls: 'spell-card unknown' });
+            
+            // Create a header with the spell name and level
+            const headerDiv = spellDiv.createDiv({ cls: 'spell-header' });
+            headerDiv.createEl('h4', { text: spell.name, cls: 'spell-name' });
+            headerDiv.createEl('span', { text: `Level ${spell.level}`, cls: 'spell-level' });
+            
+            // Add the description (if available)
+            if (spell.description) {
+              spellDiv.createEl('p', { text: spell.description, cls: 'spell-description' });
+            }
+            
+            // Button to "Learn" the spell (moves it from unknown to known)
+            const learnBtn = spellDiv.createEl('button', { text: 'Learn Spell', cls: 'learn-spell-btn' });
+            learnBtn.addEventListener('click', () => {
+              this.plugin.learnSpell(spell.id);
+              // Immediately refresh the view so the spell is removed from unknowns
+              this.refresh();
+            });
+          });
+        }
+      }
+    };
+  
+    // Initially render all unknown spells.
+    renderUnknownSpells('all');
+  
+    // Update the view when the filter is changed.
+    levelFilter.addEventListener('change', () => {
+      renderUnknownSpells(levelFilter.value);
+    });
   }
+  
   
 
   async onClose(): Promise<void> {

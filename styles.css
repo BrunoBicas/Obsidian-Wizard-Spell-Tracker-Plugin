@@ -463,3 +463,90 @@ h2 {
   background-color: #45a049;
 }
 
+/* Container for Unknown Spells */
+.unknown-spells-container {
+  padding: 1em;
+  background-color: #f8f8f8;
+}
+
+/* Navigation Buttons */
+.spellbook-nav-buttons {
+  margin-bottom: 1em;
+}
+
+/* Filter Container */
+.filter-container {
+  margin-bottom: 1em;
+}
+.filter-container label {
+  margin-right: 0.5em;
+  font-weight: bold;
+}
+
+/* Unknown Spell Group Section */
+.unknown-spell-group {
+  margin-bottom: 1em;
+  padding: 0.5em;
+  border: 1px solid #ddd;
+  background-color: #fff;
+  border-radius: 4px;
+}
+
+/* Spell Card for Unknown Spells */
+.spell-card.unknown {
+  border: 1px solid #ccc;
+  background-color: #fff;
+  padding: 0.75em;
+  margin-bottom: 0.75em;
+  border-radius: 4px;
+}
+
+/* Spell Header (Name & Level) */
+.spell-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.spell-name {
+  font-size: 1.2em;
+  margin: 0;
+}
+.spell-level {
+  font-size: 0.9em;
+  color: #777;
+}
+
+/* Spell Description */
+.spell-description {
+  font-size: 0.95em;
+  color: #555;
+  margin-top: 0.5em;
+}
+
+/* Learn Spell Button */
+.learn-spell-btn {
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  padding: 0.5em 1em;
+  cursor: pointer;
+  border-radius: 3px;
+  margin-top: 0.5em;
+}
+.learn-spell-btn:hover {
+  background-color: #45a049;
+}
+
+/* Navigation Button */
+.nav-btn {
+  background-color: #007acc;
+  color: white;
+  border: none;
+  padding: 0.5em 1em;
+  cursor: pointer;
+  margin-right: 5px;
+  border-radius: 3px;
+}
+.nav-btn:hover {
+  background-color: #005fa3;
+}
