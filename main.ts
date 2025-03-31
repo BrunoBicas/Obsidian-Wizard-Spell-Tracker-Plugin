@@ -25,6 +25,7 @@ interface SpellSlot {
 interface DnDSpellbookSettings {
   characterClass: string;
   characterLevel: number;
+  intelligenceModifier: number;
   spellSlots: SpellSlot[];
   bonusSpellSlots: SpellSlot[];
   knownSpells: Spell[];
@@ -61,6 +62,7 @@ interface ExtraSpellUse {
 const DEFAULT_SETTINGS: DnDSpellbookSettings = {
 	characterClass: 'wizard',
 	characterLevel: 1,
+  intelligenceModifier: 0,
 	spellSlots: [
 		{ level: 1, total: 2, used: 0 },
 		{ level: 2, total: 0, used: 0 },
@@ -452,7 +454,11 @@ class SpellbookView extends ItemView {
 	  
 		// Prepared Spells Section
 		const preparedSpellsSection = scrollContainer.createDiv({ cls: 'prepared-spells-section' });
-		preparedSpellsSection.createEl('h2', { text: 'Prepared Spells' });
+		const preparedCount = this.plugin.settings.knownSpells.filter(spell => spell.prepared).length;
+    const maxPrepared = this.plugin.settings.characterLevel + this.plugin.settings.intelligenceModifier;
+    preparedSpellsSection.createEl('h2', { 
+      text: `Prepared Spells (${preparedCount} / ${maxPrepared})` 
+    });
 		this.renderPreparedSpells(preparedSpellsSection);
 	  }
 
@@ -1356,12 +1362,25 @@ export default class DnDSpellbookPlugin extends Plugin {
 	}
 
 	toggleSpellPreparation(spellId: string) {
-		const spell = this.settings.knownSpells.find(s => s.id === spellId);
-		if (spell) {
-			spell.prepared = !spell.prepared;
-			this.saveSettings();
-		}
-	}
+    const spell = this.settings.knownSpells.find(s => s.id === spellId);
+    if (spell) {
+      // If trying to prepare a spell (i.e., it is currently unprepared)
+      if (!spell.prepared) {
+        // Count how many spells are already prepared
+        const preparedCount = this.settings.knownSpells.filter(s => s.prepared).length;
+        // Maximum allowed is characterLevel + intelligenceModifier
+        const maxPrepared = this.settings.characterLevel + this.settings.intelligenceModifier;
+        if (preparedCount >= maxPrepared) {
+          new Notice(`You can only prepare ${maxPrepared} spells.`);
+          return; // Do not toggle preparation
+        }
+      }
+      // Toggle the spell's preparation state
+      spell.prepared = !spell.prepared;
+      this.saveSettings();
+    }
+  }
+  
 
 	useSpellSlot(level: number) {
     const slot = this.settings.spellSlots.find(s => s.level === level);
@@ -1949,6 +1968,20 @@ new Setting(containerEl)
     .setButtonText('Open Unknown Spells')
     .onClick(async () => {
       await this.plugin.activateUnknownSpellsView();
+    })
+  );
+
+  new Setting(containerEl)
+  .setName('Intelligence Modifier')
+  .setDesc('Set your character’s Intelligence modifier (affects the number of prepared spells).')
+  .addSlider(slider => slider
+    .setLimits(-5, 10, 1)
+    .setValue(this.plugin.settings.intelligenceModifier)
+    .setDynamicTooltip()
+    .onChange(async (value) => {
+      this.plugin.settings.intelligenceModifier = value;
+      await this.plugin.saveSettings();
+      new Notice('Intelligence Modifier updated.');
     })
   );
 
