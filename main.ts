@@ -1123,7 +1123,12 @@ export default class DnDSpellbookPlugin extends Plugin {
       const index = this.settings.unknownSpells.findIndex(s => s.id === spellId);
       if (index !== -1) {
         const spell = this.settings.unknownSpells.splice(index, 1)[0];
-        // Optionally, adjust the spell properties (like setting a default level) if needed.
+      
+        // Remove any other spells with the same name (case-insensitive)
+        this.settings.unknownSpells = this.settings.unknownSpells.filter(
+          s => s.name.toLowerCase() !== spell.name.toLowerCase()
+        );
+      
         this.settings.knownSpells.push(spell);
         this.saveSettings();
         new Notice(`Learned spell: ${spell.name}`);
@@ -1402,6 +1407,20 @@ export default class DnDSpellbookPlugin extends Plugin {
       this.updateSpellSlots();
     }
   }
+
+  removeDuplicateUnknownSpells() {
+    const seen = new Set<string>();
+    this.settings.unknownSpells = this.settings.unknownSpells.filter(spell => {
+      const key = spell.name.toLowerCase();
+      if (seen.has(key)) {
+        return false; // duplicate
+      }
+      seen.add(key);
+      return true;
+    });
+    this.saveSettings();
+    new Notice("Removed duplicate unknown spells.");
+  }
   
   restoreAllSpellSlots() {
     this.settings.spellSlots.forEach(slot => {
@@ -1490,6 +1509,13 @@ async importSpellsFromNotes() {
     for (const file of spellFiles) {
       // Check if spell already exists
       const spellName = file.basename;
+
+// Check for duplicates early (by name, case-insensitive)
+const alreadyKnown = this.settings.knownSpells.some(s => s.name.toLowerCase() === spellName.toLowerCase());
+const alreadyUnknown = this.settings.unknownSpells.some(s => s.name.toLowerCase() === spellName.toLowerCase());
+if (alreadyKnown || alreadyUnknown) {
+  continue; // Skip this file
+}
       const existingSpell = this.settings.knownSpells.find(s => s.name === spellName);
       
       // Read file content to use as description
@@ -1525,14 +1551,18 @@ async importSpellsFromNotes() {
         }
         
         // Add the new spell
-        this.settings.unknownSpells.push({
-          id: Date.now().toString(),
-          name: spellName,   // ensure you get spellName (and convert underscores to spaces if needed)
-          level: spellLevel, // as determined from folder or content
-          description: content,
-          prepared: false
-        });
-        importCount++;
+        const alreadyKnown = this.settings.knownSpells.some(s => s.name.toLowerCase() === spellName.toLowerCase());
+const alreadyUnknown = this.settings.unknownSpells.some(s => s.name.toLowerCase() === spellName.toLowerCase());
+if (!alreadyKnown && !alreadyUnknown) {
+  this.settings.unknownSpells.push({
+    id: Date.now().toString(),
+    name: spellName,
+    level: spellLevel,
+    description: content,
+    prepared: false
+  });
+  importCount++;
+}
       }
     }
   }
@@ -1891,6 +1921,17 @@ new Setting(containerEl)
           new Notice(`Imported ${count} spells from configured folders`);
         })
       );
+
+      new Setting(containerEl)
+  .setName('Remove Duplicate Unknown Spells')
+  .setDesc('Clean up duplicates from older scans')
+  .addButton(button => 
+    button.setButtonText('Clean Now')
+      .onClick(() => {
+        this.plugin.removeDuplicateUnknownSpells();
+        this.display(); // Refresh UI
+      })
+  );
 // Extra Spell Uses section
 containerEl.createEl('h3', { text: 'Extra Spell Uses (from Tags)' });
 containerEl.createEl('p', { 
