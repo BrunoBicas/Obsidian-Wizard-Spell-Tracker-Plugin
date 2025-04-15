@@ -819,8 +819,8 @@ class KnownSpellsView extends ItemView {
           cls: 'delete-btn'
         });
         deleteBtn.addEventListener('click', () => {
-          if (confirm(`Are you sure you want to delete "${spell.name}"?`)) {
-            this.plugin.deleteSpell(spell.id);
+          if (confirm(`Are you sure you want to move "${spell.name}" to Unknown Spells?`)) {
+            this.plugin.moveSpellToUnknown(spell.id);
             this.refresh();
           }
         });
@@ -1365,6 +1365,28 @@ export default class DnDSpellbookPlugin extends Plugin {
 		this.settings.knownSpells = this.settings.knownSpells.filter(spell => spell.id !== spellId);
 		this.saveSettings();
 	}
+  moveSpellToUnknown(spellId: string) {
+    const index = this.settings.knownSpells.findIndex(s => s.id === spellId);
+    if (index !== -1) {
+      const spell = this.settings.knownSpells.splice(index, 1)[0];
+  
+      // Evita duplicatas na lista de unknown spells
+      const alreadyInUnknown = this.settings.unknownSpells.some(
+        s => s.name.toLowerCase() === spell.name.toLowerCase()
+      );
+  
+      if (!alreadyInUnknown) {
+        this.settings.unknownSpells.push({
+          ...spell,
+          prepared: false // Garante que ela não fique como preparada
+        });
+      }
+  
+      this.saveSettings();
+      new Notice(`Moved "${spell.name}" to Unknown Spells.`);
+    }
+  }
+  
 
 	toggleSpellPreparation(spellId: string) {
     const spell = this.settings.knownSpells.find(s => s.id === spellId);
