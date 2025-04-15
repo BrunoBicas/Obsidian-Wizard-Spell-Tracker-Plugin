@@ -400,6 +400,15 @@ class SpellbookView extends ItemView {
 		charInfoSection.createEl('p', { 
 		  text: `Class: ${this.plugin.settings.characterClass} | Level: ${this.plugin.settings.characterLevel}` 
 		});
+    // Spell Count Summary
+    const known = this.plugin.settings.knownSpells.length;
+    const unknown = this.plugin.settings.unknownSpells.length;
+    const prepared = this.plugin.settings.knownSpells.filter(s => s.prepared).length;
+    const maxPrepared = this.plugin.settings.characterLevel + this.plugin.settings.intelligenceModifier;
+    
+    charInfoSection.createEl('p', {
+      text: `📘 Known: ${known} | ❓ Unknown: ${unknown} | ✅ Prepared: ${prepared} / ${maxPrepared}`
+    });
 	  
 		// Spell Slots Section
 		const spellSlotsSection = scrollContainer.createDiv({ cls: 'spell-slots-section' });
@@ -455,7 +464,6 @@ class SpellbookView extends ItemView {
 		// Prepared Spells Section
 		const preparedSpellsSection = scrollContainer.createDiv({ cls: 'prepared-spells-section' });
 		const preparedCount = this.plugin.settings.knownSpells.filter(spell => spell.prepared).length;
-    const maxPrepared = this.plugin.settings.characterLevel + this.plugin.settings.intelligenceModifier;
     preparedSpellsSection.createEl('h2', { 
       text: `Prepared Spells (${preparedCount} / ${maxPrepared})` 
     });
@@ -636,6 +644,13 @@ class KnownSpellsView extends ItemView {
     
     // Header
     scrollContainer.createEl('h2', { text: 'Known Spells' });
+    const known = this.plugin.settings.knownSpells.length;
+const prepared = this.plugin.settings.knownSpells.filter(s => s.prepared).length;
+const maxPrepared = this.plugin.settings.characterLevel + this.plugin.settings.intelligenceModifier;
+
+scrollContainer.createEl('p', {
+  text: `✅ Prepared: ${prepared} / ${maxPrepared} | 📘 Total Known Spells: ${known}`
+});
     
     // Close button
     const closeButton = container.createEl('button', {
