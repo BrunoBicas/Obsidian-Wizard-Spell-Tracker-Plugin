@@ -4,7 +4,8 @@ import {
 	PluginSettingTab, 
 	Setting, 
 	WorkspaceLeaf, 
-	View, 
+	View,
+  TFile, 
 	ItemView,
   Notice
 } from 'obsidian';
@@ -51,6 +52,7 @@ interface Spell {
 	level: number;
 	description: string;
 	prepared: boolean;
+  path?: string;
 }
 interface ExtraSpellUse {
   spellName: string;
@@ -793,6 +795,24 @@ scrollContainer.createEl('p', {
           cls: 'spell-description hidden' 
         });
         descriptionDiv.createEl('p', { text: spell.description });
+        if (spell.path) {
+          const linkBtn = descriptionContainer.createEl('button', {
+            text: '📄 Open Note',
+            cls: 'open-note-btn'
+          });
+        
+          linkBtn.addEventListener('click', () => {
+            // Utiliza o "!" para afirmar que spell.path não é undefined
+            const file = this.app.vault.getAbstractFileByPath(spell.path!) as TFile | null;
+            // Verifica se file existe e é uma instância de TFile
+            if (file && file instanceof TFile) {
+              this.app.workspace.getLeaf().openFile(file);
+            } else {
+              new Notice("Spell note not found or is not a valid file.");
+            }
+          });
+        }
+        
         
         descriptionToggle.addEventListener('click', () => {
           if (descriptionDiv.classList.contains('hidden')) {
@@ -1596,7 +1616,8 @@ if (!alreadyKnown && !alreadyUnknown) {
     name: spellName,
     level: spellLevel,
     description: content,
-    prepared: false
+    prepared: false,
+    path: file.path
   });
   importCount++;
 }

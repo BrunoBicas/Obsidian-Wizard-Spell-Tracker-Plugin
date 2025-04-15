@@ -550,3 +550,13 @@ h2 {
 .nav-btn:hover {
   background-color: #005fa3;
 }
+.open-note-btn {
+  margin-top: 4px;
+  font-size: 0.9em;
+  background-color: var(--interactive-accent);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 4px 8px;
+  cursor: pointer;
+}
