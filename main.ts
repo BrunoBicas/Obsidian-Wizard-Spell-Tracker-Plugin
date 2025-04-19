@@ -31,6 +31,7 @@ interface DnDSpellbookSettings {
   bonusSpellSlots: SpellSlot[];
   knownSpells: Spell[];
   unknownSpells: Spell[];
+  defaultSpellFolder?: string;
   importSpellsFromNotes: boolean;
   spellFolderPath: string;
   extraSpellUses: ExtraSpellUse[];
@@ -76,6 +77,7 @@ const DEFAULT_SETTINGS: DnDSpellbookSettings = {
     { level: 8, total: 0, used: 0 },
     { level: 9, total: 0, used: 0 }
 	],
+  defaultSpellFolder: 'Spells',
 	knownSpells: [],
   unknownSpells: [],
   importSpellsFromNotes: false,
@@ -1153,7 +1155,7 @@ export default class DnDSpellbookPlugin extends Plugin {
 		document.head.appendChild(styleElement);
 	  }
 
-    learnSpell(spellId: string) {
+    async learnSpell(spellId: string) {
       // Find the unknown spell by its ID.
       const index = this.settings.unknownSpells.findIndex(s => s.id === spellId);
       if (index !== -1) {
@@ -1164,7 +1166,7 @@ export default class DnDSpellbookPlugin extends Plugin {
           s => s.name.toLowerCase() !== spell.name.toLowerCase()
         );
       
-        this.settings.knownSpells.push(spell);
+        await this.createSpellWithNote(spell);
         this.saveSettings();
         new Notice(`Learned spell: ${spell.name}`);
       }
@@ -1331,6 +1333,28 @@ export default class DnDSpellbookPlugin extends Plugin {
         console.error('Could not create or find a leaf for the Known Spells view');
     }
   }
+  async createSpellWithNote(spell: Spell) {
+    const fileName = `${spell.name}.md`;
+    const folderPath = this.settings.defaultSpellFolder || "Spells";
+    const fullPath = `${folderPath}/${fileName}`;
+  
+    await this.app.vault.createFolder(folderPath).catch(() => {});
+  
+    const fileContent = `# ${spell.name}\n\n- **Level:** ${spell.level}\n\n${spell.description}`;
+  
+    try {
+      const file = await this.app.vault.create(fullPath, fileContent);
+      spell.path = file.path;
+      // (opcional) abrir o arquivo
+      // await this.app.workspace.getLeaf().openFile(file);
+    } catch (e) {
+      console.error("Erro criando nota:", e);
+      new Notice("Erro ao criar a nota da magia.");
+    }
+  
+    await this.createSpellWithNote(spell);
+    await this.saveSettings();
+  }
   
   async activateUnknownSpellsView() {
     const { workspace } = this.app;
@@ -1391,10 +1415,10 @@ export default class DnDSpellbookPlugin extends Plugin {
 		await this.saveData(this.settings);
 	}
 
-	addSpell(spell: Spell) {
-		this.settings.knownSpells.push(spell);
-		this.saveSettings();
-	}
+	async addSpell(spell: Spell) {
+    await this.createSpellWithNote(spell);
+    this.saveSettings();
+  }
 
 	deleteSpell(spellId: string) {
 		this.settings.knownSpells = this.settings.knownSpells.filter(spell => spell.id !== spellId);
@@ -1795,6 +1819,20 @@ new Setting(containerEl)
       }
     });
   });
+  
+  new Setting(containerEl)
+  .setName("Default Folder for New Spell Notes")
+  .setDesc("The folder where new spell notes will be created.")
+  .addText(text =>
+    text
+      .setPlaceholder("Spells")
+      .setValue(this.plugin.settings.defaultSpellFolder || "")
+      .onChange(async (value) => {
+        this.plugin.settings.defaultSpellFolder = value.trim() || "Spells";
+        await this.plugin.saveSettings();
+      })
+  );
+
 
       
       new Setting(containerEl)
