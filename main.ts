@@ -798,22 +798,30 @@ scrollContainer.createEl('p', {
         });
         descriptionDiv.createEl('p', { text: spell.description });
         if (spell.path) {
-          const linkBtn = descriptionContainer.createEl('button', {
-            text: '📄 Open Note',
-            cls: 'open-note-btn'
-          });
-        
-          linkBtn.addEventListener('click', () => {
-            // Utiliza o "!" para afirmar que spell.path não é undefined
-            const file = this.app.vault.getAbstractFileByPath(spell.path!) as TFile | null;
-            // Verifica se file existe e é uma instância de TFile
-            if (file && file instanceof TFile) {
-              this.app.workspace.getLeaf().openFile(file);
-            } else {
-              new Notice("Spell note not found or is not a valid file.");
-            }
-          });
-        }
+  const linkBtn = descriptionContainer.createEl('button', {
+    text: '📄 Open Note',
+    cls: 'open-note-btn'
+  });
+
+  linkBtn.addEventListener('click', async () => {
+    const file = this.app.vault.getAbstractFileByPath(spell.path!) as TFile | null;
+
+    if (file && file instanceof TFile) {
+      // 🔄 Atualiza a descrição da spell com o conteúdo do arquivo
+      const content = await this.app.vault.read(file);
+      spell.description = content;
+
+      // Salva nos settings (seja known ou unknown)
+      await this.plugin.saveSettings();
+
+      // Abre a nota normalmente
+      this.app.workspace.getLeaf().openFile(file);
+    } else {
+      new Notice("Spell note not found or is not a valid file.");
+    }
+  });
+}
+
         
         
         descriptionToggle.addEventListener('click', () => {
@@ -1334,6 +1342,12 @@ export default class DnDSpellbookPlugin extends Plugin {
     }
   }
   async createSpellWithNote(spell: Spell) {
+	if (spell.path) {
+		this.settings.knownSpells.push(spell);
+		await this.saveSettings();
+		new Notice(`Magia "${spell.name}" adicionada com sucesso.`);
+		return;
+	  }
     const fileName = `${spell.name}.md`;
     const folderPath = this.settings.defaultSpellFolder || "Spells";
     const fullPath = `${folderPath}/${fileName}`;
@@ -2073,8 +2087,31 @@ new Setting(containerEl)
     
     containerEl.createEl('p', { 
       text: `You currently know ${spellCount} spells and have ${preparedCount} prepared.` 
-    });
-    
+    });   
+	
+	new Setting(containerEl)
+  .setName("Limpar magias desconhecidas aprendidas")
+  .setDesc("Remove da lista de Unknown todas as magias que já foram aprendidas")
+  .addButton(btn => 
+    btn.setButtonText("🧹 Limpar Unknown")
+      .setCta()
+      .onClick(async () => {
+        const before = this.plugin.settings.unknownSpells.length;
+
+        this.plugin.settings.unknownSpells = this.plugin.settings.unknownSpells.filter(
+          s => !this.plugin.settings.knownSpells.some(
+            k => k.name.toLowerCase().trim() === s.name.toLowerCase().trim()
+          )
+        );
+
+        const after = this.plugin.settings.unknownSpells.length;
+        const removed = before - after;
+
+        await this.plugin.saveSettings();
+        new Notice(`🧙‍♂️ Removidas ${removed} magias da lista de Unknown.`);
+      })
+  );
+
     
     new Setting(containerEl)
       .setName('Manage Spells')
