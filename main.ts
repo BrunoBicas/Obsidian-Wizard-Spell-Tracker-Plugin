@@ -1352,8 +1352,9 @@ export default class DnDSpellbookPlugin extends Plugin {
       new Notice("Erro ao criar a nota da magia.");
     }
   
-    await this.createSpellWithNote(spell);
-    await this.saveSettings();
+    this.settings.knownSpells.push(spell);
+await this.saveSettings();
+new Notice(`Magia "${spell.name}" criada com sucesso.`);
   }
   
   async activateUnknownSpellsView() {
