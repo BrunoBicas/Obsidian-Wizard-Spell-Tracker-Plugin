@@ -1560,99 +1560,85 @@ new Notice(`Magia "${spell.name}" criada com sucesso.`);
     }
 }
 
-async importSpellsFromNotes() {
-  const files = this.app.vault.getMarkdownFiles();
-  let importCount = 0;
+async importSpellsFromNotes(): Promise<number> {
+	const files = this.app.vault.getMarkdownFiles();
+	let importCount = 0;
   
-  // Process each level folder
-  const levelFolders = [
-    { level: 0, path: this.settings.cantripFolderPath },
-    { level: 1, path: this.settings.level1FolderPath },
-    { level: 2, path: this.settings.level2FolderPath },
-    { level: 3, path: this.settings.level3FolderPath },
-    { level: 4, path: this.settings.level4FolderPath },
-    { level: 5, path: this.settings.level5FolderPath },
-    { level: 6, path: this.settings.level6FolderPath },
-    { level: 7, path: this.settings.level7FolderPath },
-    { level: 8, path: this.settings.level8FolderPath },
-    { level: 9, path: this.settings.level9FolderPath }
-  ];
+	const levelFolders = [
+	  { level: 0, path: this.settings.cantripFolderPath },
+	  { level: 1, path: this.settings.level1FolderPath },
+	  { level: 2, path: this.settings.level2FolderPath },
+	  { level: 3, path: this.settings.level3FolderPath },
+	  { level: 4, path: this.settings.level4FolderPath },
+	  { level: 5, path: this.settings.level5FolderPath },
+	  { level: 6, path: this.settings.level6FolderPath },
+	  { level: 7, path: this.settings.level7FolderPath },
+	  { level: 8, path: this.settings.level8FolderPath },
+	  { level: 9, path: this.settings.level9FolderPath }
+	];
   
-  // Also include the general folder if specified
-  if (this.settings.spellFolderPath) {
-    levelFolders.push({ level: -1, path: this.settings.spellFolderPath });
+	// Adiciona pasta global se existir
+	if (this.settings.spellFolderPath) {
+	  levelFolders.push({ level: -1, path: this.settings.spellFolderPath });
+	}
+  
+	for (const { level, path } of levelFolders) {
+	  if (!path) continue;
+  
+	  const spellFiles = files.filter(file => file.path.startsWith(path));
+  
+	  for (const file of spellFiles) {
+		const spellName = file.basename.trim();
+		const normalizedName = spellName.toLowerCase();
+  
+		const alreadyKnown = this.settings.knownSpells.some(s => s.name.toLowerCase().trim() === normalizedName);
+		const alreadyUnknown = this.settings.unknownSpells.some(s => s.name.toLowerCase().trim() === normalizedName);
+		if (alreadyKnown || alreadyUnknown) continue;
+  
+		const content = await this.app.vault.read(file);
+		let spellLevel = level;
+  
+		if (level === -1) {
+		  const levelMatch = spellName.match(/\((\d+)\)$/) || spellName.match(/level\s*(\d+)/i);
+		  if (levelMatch) {
+			spellLevel = parseInt(levelMatch[1]);
+		  } else {
+			const contentLevelMatch =
+			  content.match(/level\s*(\d+)/i) ||
+			  content.match(/(\d+)\w{0,2}\s*level/i) ||
+			  content.match(/(\d+)(?:st|nd|rd|th)[-\s]level/i);
+  
+			if (contentLevelMatch) {
+			  spellLevel = parseInt(contentLevelMatch[1]);
+			}
+  
+			if (/cantrip/i.test(content)) {
+			  spellLevel = 0;
+			}
+		  }
+		}
+  
+		this.settings.unknownSpells.push({
+		  id: Date.now().toString(),
+		  name: spellName,
+		  level: spellLevel,
+		  description: content,
+		  prepared: false,
+		  path: file.path
+		});
+  
+		importCount++;
+	  }
+	}
+  
+	await this.saveSettings();
+  
+	// ✅ Chama o método agora com segurança
+	this.updateSpellSlots();
+  
+	return importCount;
   }
   
-  for (const { level, path } of levelFolders) {
-    if (!path) continue;
-    
-    const spellFiles = files.filter(file => file.path.startsWith(path));
-    
-    for (const file of spellFiles) {
-      // Check if spell already exists
-      const spellName = file.basename;
-
-// Check for duplicates early (by name, case-insensitive)
-const alreadyKnown = this.settings.knownSpells.some(s => s.name.toLowerCase() === spellName.toLowerCase());
-const alreadyUnknown = this.settings.unknownSpells.some(s => s.name.toLowerCase() === spellName.toLowerCase());
-if (alreadyKnown || alreadyUnknown) {
-  continue; // Skip this file
-}
-      const existingSpell = this.settings.knownSpells.find(s => s.name === spellName);
-      
-      // Read file content to use as description
-      const content = await this.app.vault.read(file);
-      
-      if (existingSpell) {
-        // Update existing spell description
-        existingSpell.description = content;
-        importCount++;
-      } else {
-        // Determine spell level
-        let spellLevel = level;
-        
-        // If from general folder, try to determine level from content
-        if (level === -1) {
-          // Use the existing logic to detect level from content
-          const levelMatch = spellName.match(/\((\d+)\)$/) || spellName.match(/level\s*(\d+)/i);
-          if (levelMatch) {
-            spellLevel = parseInt(levelMatch[1]);
-          } else {
-            const contentLevelMatch = content.match(/level\s*(\d+)/i) || 
-                                    content.match(/(\d+)\w{0,2}\s*level/i) ||
-                                    content.match(/(\d+)(?:st|nd|rd|th)[-\s]level/i);
-            if (contentLevelMatch) {
-              spellLevel = parseInt(contentLevelMatch[1]);
-            }
-            
-            // Check for "cantrip" mentions
-            if (content.match(/cantrip/i)) {
-              spellLevel = 0;
-            }
-          }
-        }
-        
-        // Add the new spell
-        const alreadyKnown = this.settings.knownSpells.some(s => s.name.toLowerCase() === spellName.toLowerCase());
-const alreadyUnknown = this.settings.unknownSpells.some(s => s.name.toLowerCase() === spellName.toLowerCase());
-if (!alreadyKnown && !alreadyUnknown) {
-  this.settings.unknownSpells.push({
-    id: Date.now().toString(),
-    name: spellName,
-    level: spellLevel,
-    description: content,
-    prepared: false,
-    path: file.path
-  });
-  importCount++;
-}
-      }
-    }
-  }
-  
-  this.updateSpellSlots(); // Refresh views if open
-  return importCount; // Return count for display in the Notice
-}
   
   // Update spell slots when class/level changes
   updateSpellSlots() {
