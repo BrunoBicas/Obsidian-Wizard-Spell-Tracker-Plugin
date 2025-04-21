@@ -1072,6 +1072,38 @@ export default class DnDSpellbookPlugin extends Plugin {
 	settings: DnDSpellbookSettings & {
     spellFolderPath?: string;
   };
+  
+  
+    // Permitir que outro plugin adicione spell slots bônus
+	public addBonusSpellSlot(level: number, amount: number, source = "external") {
+		const existing = this.settings.bonusSpellSlots.find(s => s.level === level && s.source === source);
+		if (existing) {
+		  existing.total += amount;
+		} else {
+		  this.settings.bonusSpellSlots.push({ level, total: amount, used: 0, source });
+		}
+		this.updateSpellSlots();
+		this.saveSettings();
+	  }
+	
+	  // Permitir que outro plugin adicione usos extras de uma magia
+	  public addExtraSpellUse(spellName: string, uses: number, source = "external") {
+		const existing = this.settings.extraSpellUses.find(e => e.spellName.toLowerCase() === spellName.toLowerCase() && e.source === source);
+		if (existing) {
+		  existing.uses += uses;
+		  existing.usesRemaining += uses;
+		} else {
+		  this.settings.extraSpellUses.push({
+			spellName,
+			uses,
+			usesRemaining: uses,
+			source
+		  });
+		}
+		this.saveSettings();
+	  }
+	
+	
 
 	async onload() {
 		await this.loadSettings();
@@ -1802,6 +1834,29 @@ new Setting(containerEl)
           new Notice('Spell slots updated based on character class');
 				})
 			);
+			new Setting(containerEl)
+  .setName("Give Bonus Spell Slot (test)")
+  .setDesc("Add +1 slot to level 3 (for testing or feats)")
+  .addButton(btn =>
+    btn.setButtonText("Add Slot")
+       .onClick(() => {
+         this.plugin.addBonusSpellSlot(3, 1, "Test Button");
+         new Notice("Added +1 level 3 slot");
+         this.display();
+       })
+  );
+  new Setting(containerEl)
+  .setName("Give Extra Spell Use (test)")
+  .setDesc("Add +1 use to Fireball (for testing or feats)")
+  .addButton(btn =>
+    btn.setButtonText("Add Use")
+       .onClick(() => {
+         this.plugin.addExtraSpellUse("Fireball", 1, "Test Button");
+         new Notice("Added +1 Fireball use");
+         this.display();
+       })
+  );
+
       
       new Setting(containerEl)
   .setName('Learn Unknown Spells')
