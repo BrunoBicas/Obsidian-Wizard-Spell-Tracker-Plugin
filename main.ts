@@ -23,6 +23,34 @@ interface SpellSlot {
   autoScanned?: boolean; // Added for bonus slots auto-scan
 }
 
+
+const CANTRIPS_KNOWN_BY_CLASS_LEVEL: { [key: string]: { level: number; cantrips: number; }[] } = {
+  'Wizard': [ { level: 1, cantrips: 3 }, { level: 4, cantrips: 4 }, { level: 10, cantrips: 5 } ],
+  'Sorcerer': [ { level: 1, cantrips: 4 }, { level: 4, cantrips: 5 }, { level: 10, cantrips: 6 } ],
+  'Cleric': [ { level: 1, cantrips: 3 }, { level: 4, cantrips: 4 }, { level: 10, cantrips: 5 } ],
+  // Adicione outras classes aqui
+};
+
+function getCantripsKnownCount(characterClass: string, level: number): number {
+  const className = characterClass ? characterClass.charAt(0).toUpperCase() + characterClass.slice(1).toLowerCase() : '';
+  const progression = CANTRIPS_KNOWN_BY_CLASS_LEVEL[className];
+  if (!progression) return 0;
+  let count = 0;
+  for (const entry of progression) {
+    if (level >= entry.level) {
+      count = entry.cantrips;
+    } else {
+      break;
+    }
+  }
+  return count;
+}
+
+function getPreparedSpellsMaxCount(intModifier: number, charLevel: number): number {
+  const count = intModifier + charLevel;
+  return Math.max(1, count); 
+}
+
 interface DnDSpellbookSettings {
   characterClass: string;
   characterLevel: number;
@@ -52,7 +80,7 @@ interface Spell {
 	name: string;
 	level: number;
 	description: string;
-	prepared: boolean;
+  isPrepared: boolean; 
   path?: string;
 }
 interface ExtraSpellUse {
@@ -407,11 +435,14 @@ class SpellbookView extends ItemView {
     // Spell Count Summary
     const known = this.plugin.settings.knownSpells.length;
     const unknown = this.plugin.settings.unknownSpells.length;
-    const prepared = this.plugin.settings.knownSpells.filter(s => s.prepared).length;
-    const maxPrepared = this.plugin.settings.characterLevel + this.plugin.settings.intelligenceModifier;
-    
+    const knownCantrips = this.plugin.settings.knownSpells.filter(s => s.level === 0).length;
+    const preparedSpells = this.plugin.settings.knownSpells.filter(s => s.level > 0 && s.isPrepared).length;
+    const maxCantrips = getCantripsKnownCount(this.plugin.settings.characterClass, this.plugin.settings.characterLevel);
+    const maxPreparedSpells = getPreparedSpellsMaxCount(this.plugin.settings.intelligenceModifier, this.plugin.settings.characterLevel);
+
+
     charInfoSection.createEl('p', {
-      text: `📘 Known: ${known} | ❓ Unknown: ${unknown} | ✅ Prepared: ${prepared} / ${maxPrepared}`
+      text: `📘 Known: ${known} | ❓ Unknown: ${unknown} | Cantrips: ${knownCantrips}/${maxCantrips} ✅ Prepared: ${preparedSpells}/${maxPreparedSpells}`
     });
 	  
 		// Spell Slots Section
@@ -467,9 +498,9 @@ class SpellbookView extends ItemView {
 	  
 		// Prepared Spells Section
 		const preparedSpellsSection = scrollContainer.createDiv({ cls: 'prepared-spells-section' });
-		const preparedCount = this.plugin.settings.knownSpells.filter(spell => spell.prepared).length;
+		const preparedCount = this.plugin.settings.knownSpells.filter(spell => spell.isPrepared).length;
     preparedSpellsSection.createEl('h2', { 
-      text: `Prepared Spells (${preparedCount} / ${maxPrepared})` 
+      text: `Prepared Cantrips: ${knownCantrips}/${maxCantrips}\nPrepared Spells (${preparedSpells}/${maxPreparedSpells} })` 
     });
 		this.renderPreparedSpells(preparedSpellsSection);
 	  }
@@ -477,7 +508,7 @@ class SpellbookView extends ItemView {
 	renderPreparedSpells(container: HTMLElement) {
 		container.empty();
 
-		const preparedSpells = this.plugin.settings.knownSpells.filter(spell => spell.prepared);
+		const preparedSpells = this.plugin.settings.knownSpells.filter(spell => spell.isPrepared);
 		
 		if (preparedSpells.length === 0) {
 			container.createEl('p', { text: 'No spells prepared yet. Prepare spells from your Known Spells list.' });
@@ -580,7 +611,7 @@ descriptionToggle.addEventListener('click', () => {
 				name: nameInput.value,
 				level: parseInt(levelInput.value),
 				description: descInput.value,
-				prepared: false
+				isPrepared: false
 			});
 			modalContainer.remove();
 			this.refresh();
@@ -649,11 +680,14 @@ class KnownSpellsView extends ItemView {
     // Header
     scrollContainer.createEl('h2', { text: 'Known Spells' });
     const known = this.plugin.settings.knownSpells.length;
-const prepared = this.plugin.settings.knownSpells.filter(s => s.prepared).length;
-const maxPrepared = this.plugin.settings.characterLevel + this.plugin.settings.intelligenceModifier;
+const knownCantrips = this.plugin.settings.knownSpells.filter(s => s.level === 0).length;
+        const preparedSpells = this.plugin.settings.knownSpells.filter(s => s.level > 0 && s.isPrepared).length;
+        const maxCantrips = getCantripsKnownCount(this.plugin.settings.characterClass, this.plugin.settings.characterLevel);
+        const maxPreparedSpells = getPreparedSpellsMaxCount(this.plugin.settings.intelligenceModifier, this.plugin.settings.characterLevel);
+
 
 scrollContainer.createEl('p', {
-  text: `✅ Prepared: ${prepared} / ${maxPrepared} | 📘 Total Known Spells: ${known}`
+  text: `Cantrips: ${knownCantrips}/${maxCantrips}\n✅ Prepared: ${preparedSpells}/${maxPreparedSpells} | 📘 Total Known Spells: ${known}`
 });
     
     // Close button
@@ -767,7 +801,7 @@ scrollContainer.createEl('p', {
       
       levelSpells.forEach(spell => {
         const spellDiv = levelSection.createDiv({ 
-          cls: `spell-card ${spell.prepared ? 'prepared' : ''}` 
+          cls: `spell-card ${spell.isPrepared ? 'prepared' : ''}` 
         });
         
         const headerDiv = spellDiv.createDiv({ cls: 'spell-header' });
@@ -839,15 +873,15 @@ scrollContainer.createEl('p', {
         
         // Prepare/Unprepare Toggle
         const prepareBtn = buttonContainer.createEl('button', {
-          text: spell.prepared ? 'Unprepare' : 'Prepare',
-          cls: spell.prepared ? 'unprepare-btn' : 'prepare-btn'
+          text: spell.isPrepared ? 'Unprepare' : 'Prepare',
+          cls: spell.isPrepared ? 'unprepare-btn' : 'prepare-btn'
         });
         prepareBtn.addEventListener('click', () => {
           this.plugin.toggleSpellPreparation(spell.id);
           this.refresh();
         });
 
-        if (spell.prepared) {
+        if (spell.isPrepared) {
           const castBtn = buttonContainer.createEl('button', {
               text: 'Cast',
               cls: 'cast-btn'
@@ -906,7 +940,7 @@ scrollContainer.createEl('p', {
         name: nameInput.value,
         level: parseInt(levelInput.value),
         description: descInput.value,
-        prepared: false
+        isPrepared: false
       });
       modalContainer.remove();
       this.refresh();
@@ -1484,7 +1518,7 @@ new Notice(`Magia "${spell.name}" criada com sucesso.`);
       if (!alreadyInUnknown) {
         this.settings.unknownSpells.push({
           ...spell,
-          prepared: false // Garante que ela não fique como preparada
+          isPrepared: false // Garante que ela não fique como preparada
         });
       }
   
@@ -1498,9 +1532,9 @@ new Notice(`Magia "${spell.name}" criada com sucesso.`);
     const spell = this.settings.knownSpells.find(s => s.id === spellId);
     if (spell) {
       // If trying to prepare a spell (i.e., it is currently unprepared)
-      if (!spell.prepared) {
+      if (!spell.isPrepared) {
         // Count how many spells are already prepared
-        const preparedCount = this.settings.knownSpells.filter(s => s.prepared).length;
+        const preparedCount = this.settings.knownSpells.filter(s => s.isPrepared).length;
         // Maximum allowed is characterLevel + intelligenceModifier
         const maxPrepared = this.settings.characterLevel + this.settings.intelligenceModifier;
         if (preparedCount >= maxPrepared) {
@@ -1509,7 +1543,7 @@ new Notice(`Magia "${spell.name}" criada com sucesso.`);
         }
       }
       // Toggle the spell's preparation state
-      spell.prepared = !spell.prepared;
+      spell.isPrepared = !spell.isPrepared;
       this.saveSettings();
     }
   }
@@ -1669,7 +1703,7 @@ async importSpellsFromNotes(): Promise<number> {
 		  name: spellName,
 		  level: spellLevel,
 		  description: content,
-		  prepared: false,
+		  isPrepared: false,
 		  path: file.path
 		});
   
@@ -2138,7 +2172,7 @@ new Setting(containerEl)
     containerEl.createEl('h3', { text: 'Known Spells' });
     
     const spellCount = this.plugin.settings.knownSpells.length;
-    const preparedCount = this.plugin.settings.knownSpells.filter(s => s.prepared).length;
+    const preparedCount = this.plugin.settings.knownSpells.filter(s => s.isPrepared).length;
     
     containerEl.createEl('p', { 
       text: `You currently know ${spellCount} spells and have ${preparedCount} prepared.` 
@@ -2200,6 +2234,26 @@ new Setting(containerEl)
       new Notice('Intelligence Modifier updated.');
     })
   );
+  new Setting(containerEl)
+    .setName("Status de Preparação")
+    .setDesc(`Aqui você pode ver um resumo de seus truques e magias.`)
+    .addTextArea(text => {
+        // Calcula os totais
+        const knownCantrips = this.plugin.settings.knownSpells.filter(s => s.level === 0).length;
+        const preparedSpells = this.plugin.settings.knownSpells.filter(s => s.level > 0 && s.isPrepared).length;
+        const maxCantrips = getCantripsKnownCount(this.plugin.settings.characterClass, this.plugin.settings.characterLevel);
+        const maxPreparedSpells = getPreparedSpellsMaxCount(this.plugin.settings.intelligenceModifier, this.plugin.settings.characterLevel);
 
+        // Define o valor e o placeholder da área de texto
+        text.setValue(`Truques: ${knownCantrips}/${maxCantrips}\nMagias Preparadas: ${preparedSpells}/${maxPreparedSpells}`);
+        
+        // Desabilita a área de texto para que seja apenas leitura
+        text.inputEl.setAttr("readonly", true);
+        
+        // Ajusta a altura para caber o conteúdo
+        text.inputEl.style.height = '4em'; 
+        text.inputEl.style.resize = 'none';
+        text.inputEl.style.backgroundColor = 'var(--background-secondary)';
+    });
 	}
 }
