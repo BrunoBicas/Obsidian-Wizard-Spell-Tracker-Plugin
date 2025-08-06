@@ -560,3 +560,347 @@ h2 {
   padding: 4px 8px;
   cursor: pointer;
 }
+
+.search-container {
+  margin-bottom: 15px;
+  padding: 10px;
+  background-color: var(--background-secondary);
+  border-radius: 6px;
+  border: 1px solid var(--background-modifier-border);
+}
+
+.search-container label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 600;
+  color: var(--text-normal);
+}
+
+.spell-search-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  background-color: var(--background-primary);
+  color: var(--text-normal);
+  font-size: 14px;
+  transition: border-color 0.2s ease;
+}
+
+.spell-search-input:focus {
+  outline: none;
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 0 2px var(--interactive-accent-hover);
+}
+
+.spell-search-input::placeholder {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.filter-container {
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+
+.filter-container label {
+  font-weight: 500;
+  color: var(--text-normal);
+  white-space: nowrap;
+}
+
+.filter-container select {
+  padding: 6px 10px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  background-color: var(--background-primary);
+  color: var(--text-normal);
+  min-width: 120px;
+}
+
+.filter-container select:focus {
+  outline: none;
+  border-color: var(--interactive-accent);
+}
+
+/* Melhorias para seções de nível */
+.spell-level-section h3,
+.prepared-level-section h4 {
+  color: var(--text-accent);
+  border-bottom: 1px solid var(--background-modifier-border);
+  padding-bottom: 5px;
+  margin-bottom: 10px;
+}
+
+/* Mensagens de "nenhuma magia encontrada" */
+.no-spells-message {
+  text-align: center;
+  padding: 20px;
+  color: var(--text-muted);
+  font-style: italic;
+  background-color: var(--background-secondary);
+  border-radius: 6px;
+  margin: 10px 0;
+}
+
+/* Melhorar a aparência das spell cards */
+.spell-card.prepared {
+  border-left: 3px solid var(--interactive-accent);
+}
+
+.spell-card.unknown {
+  border-left: 3px solid var(--text-warning);
+}
+
+.spell-card {
+  margin-bottom: 10px;
+  padding: 15px;
+  background-color: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  transition: box-shadow 0.2s ease;
+}
+
+.spell-card:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Spell header styling */
+.spell-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.spell-name {
+  font-weight: 600;
+  color: var(--text-normal);
+}
+
+.spell-level {
+  font-size: 12px;
+  color: var(--text-muted);
+  background-color: var(--background-secondary);
+  padding: 2px 8px;
+  border-radius: 12px;
+}
+
+/* Button container */
+.spell-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.spell-buttons button {
+  padding: 6px 12px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  background-color: var(--background-primary);
+  color: var(--text-normal);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 12px;
+}
+
+.spell-buttons button:hover {
+  background-color: var(--background-secondary);
+}
+
+.prepare-btn, .learn-spell-btn {
+  background-color: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-color: var(--interactive-accent);
+}
+
+.prepare-btn:hover, .learn-spell-btn:hover {
+  background-color: var(--interactive-accent-hover);
+}
+
+.unprepare-btn, .delete-btn {
+  background-color: var(--background-modifier-error);
+  color: var(--text-on-accent);
+  border-color: var(--background-modifier-error);
+}
+
+.unprepare-btn:hover, .delete-btn:hover {
+  opacity: 0.8;
+}
+
+.cast-btn, .cast-spell-btn {
+  background-color: var(--text-success);
+  color: white;
+  border-color: var(--text-success);
+}
+
+.cast-btn:hover, .cast-spell-btn:hover {
+  opacity: 0.8;
+}
+
+/* Extra uses badge */
+.extra-uses-badge {
+  display: inline-block;
+  margin-left: 10px;
+}
+
+.extra-uses-badge span {
+  background-color: var(--text-warning);
+  color: white;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: bold;
+}
+
+/* Description toggle */
+.description-toggle {
+  background: none;
+  border: none;
+  color: var(--text-accent);
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+  margin-bottom: 5px;
+}
+
+.description-toggle:hover {
+  opacity: 0.8;
+}
+
+.spell-description.hidden {
+  display: none;
+}
+
+.spell-description {
+  margin: 10px 0;
+  padding: 10px;
+  background-color: var(--background-secondary);
+  border-radius: 4px;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+/* Open note button */
+.open-note-btn {
+  background-color: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border: none;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+  margin-top: 5px;
+}
+
+.open-note-btn:hover {
+  background-color: var(--interactive-accent-hover);
+}
+
+/* Spell status indicators */
+.spell-status {
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-weight: bold;
+}
+
+.spell-status.prepared {
+  background-color: var(--text-success);
+  color: white;
+}
+
+.spell-status.unprepared {
+  background-color: var(--text-muted);
+  color: white;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .filter-container {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  
+  .filter-container select {
+    width: 100%;
+    min-width: auto;
+  }
+  
+  .spell-buttons {
+    flex-direction: column;
+  }
+  
+  .spell-buttons button {
+    width: 100%;
+  }
+  
+  .spell-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+  }
+}/* Adicione este CSS ao seu arquivo de estilos ou dentro do método loadStyles() */
+
+.search-container {
+  margin-bottom: 15px;
+  padding: 10px;
+  background-color: var(--background-secondary);
+  border-radius: 6px;
+  border: 1px solid var(--background-modifier-border);
+}
+
+.search-container label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 600;
+  color: var(--text-normal);
+}
+
+.spell-search-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  background-color: var(--background-primary);
+  color: var(--text-normal);
+  font-size: 14px;
+  transition: border-color 0.2s ease;
+}
+
+.spell-search-input:focus {
+  outline: none;
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 0 2px var(--interactive-accent-hover);
+}
+
+.spell-search-input::placeholder {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.filter-container {
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.filter-container label {
+  font-weight: 500;
+  color: var(--text-normal);
+  white-space: nowrap;
+}
+
+.filter-container select {
+  padding: 6px 10px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  background-color: var(--background-primary);
+  color: var(--text-normal);
+}

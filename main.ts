@@ -422,9 +422,9 @@ class SpellbookView extends ItemView {
 		const scrollContainer = container.createDiv({
 		  cls: 'spellbook-scroll-container'
 		});
-    scrollContainer.style.maxHeight = '70vh';
-    scrollContainer.style.overflowY = 'auto';
-    scrollContainer.style.paddingRight = '10px';
+		scrollContainer.style.maxHeight = '70vh';
+		scrollContainer.style.overflowY = 'auto';
+		scrollContainer.style.paddingRight = '10px';
 		
 		// Character Info Section
 		const charInfoSection = scrollContainer.createDiv({ cls: 'character-info' });
@@ -432,18 +432,18 @@ class SpellbookView extends ItemView {
 		charInfoSection.createEl('p', { 
 		  text: `Class: ${this.plugin.settings.characterClass} | Level: ${this.plugin.settings.characterLevel}` 
 		});
-    // Spell Count Summary
-    const known = this.plugin.settings.knownSpells.length;
-    const unknown = this.plugin.settings.unknownSpells.length;
-    const knownCantrips = this.plugin.settings.knownSpells.filter(s => s.level === 0).length;
-    const preparedSpells = this.plugin.settings.knownSpells.filter(s => s.level > 0 && s.isPrepared).length;
-    const maxCantrips = getCantripsKnownCount(this.plugin.settings.characterClass, this.plugin.settings.characterLevel);
-    const maxPreparedSpells = getPreparedSpellsMaxCount(this.plugin.settings.intelligenceModifier, this.plugin.settings.characterLevel);
+		
+		// Spell Count Summary
+		const known = this.plugin.settings.knownSpells.length;
+		const unknown = this.plugin.settings.unknownSpells.length;
+		const knownCantrips = this.plugin.settings.knownSpells.filter(s => s.level === 0).length;
+		const preparedSpells = this.plugin.settings.knownSpells.filter(s => s.level > 0 && s.isPrepared).length;
+		const maxCantrips = getCantripsKnownCount(this.plugin.settings.characterClass, this.plugin.settings.characterLevel);
+		const maxPreparedSpells = getPreparedSpellsMaxCount(this.plugin.settings.intelligenceModifier, this.plugin.settings.characterLevel);
 
-
-    charInfoSection.createEl('p', {
-      text: `📘 Known: ${known} | ❓ Unknown: ${unknown} | Cantrips: ${knownCantrips}/${maxCantrips} ✅ Prepared: ${preparedSpells}/${maxPreparedSpells}`
-    });
+		charInfoSection.createEl('p', {
+		  text: `📘 Known: ${known} | ❓ Unknown: ${unknown} | Cantrips: ${knownCantrips}/${maxCantrips} ✅ Prepared: ${preparedSpells}/${maxPreparedSpells}`
+		});
 	  
 		// Spell Slots Section
 		const spellSlotsSection = scrollContainer.createDiv({ cls: 'spell-slots-section' });
@@ -495,86 +495,184 @@ class SpellbookView extends ItemView {
 		  cls: 'add-spell-btn'
 		});
 		addSpellBtn.addEventListener('click', () => this.openAddSpellModal());
+
+		// ✅ BARRA DE PESQUISA PARA MAGIAS PREPARADAS
+		const searchContainer = scrollContainer.createDiv({ cls: 'search-container' });
+		searchContainer.createEl('label', { text: 'Search prepared spells: ' });
+		const searchInput = searchContainer.createEl('input', {
+		  type: 'text',
+		  placeholder: 'Type spell name or description...',
+		  cls: 'spell-search-input'
+		});
+		
+		// ✅ FILTRO PARA MAGIAS PREPARADAS
+		const filterContainer = scrollContainer.createDiv({ cls: 'filter-container' });
+		filterContainer.createEl('label', { text: 'Level: ' });
+		const levelFilter = filterContainer.createEl('select');
+		levelFilter.createEl('option', { text: 'All Levels', value: 'all' });
+		levelFilter.createEl('option', { text: 'Cantrips (Level 0)', value: '0' });
+		[1,2,3,4,5,6,7,8,9].forEach(level => {
+		  levelFilter.createEl('option', { 
+			text: `Level ${level}`, 
+			value: level.toString() 
+		  });
+		});
 	  
 		// Prepared Spells Section
 		const preparedSpellsSection = scrollContainer.createDiv({ cls: 'prepared-spells-section' });
 		const preparedCount = this.plugin.settings.knownSpells.filter(spell => spell.isPrepared).length;
-    preparedSpellsSection.createEl('h2', { 
-      text: `Prepared Cantrips: ${knownCantrips}/${maxCantrips}\nPrepared Spells (${preparedSpells}/${maxPreparedSpells} })` 
-    });
-		this.renderPreparedSpells(preparedSpellsSection);
-	  }
+		preparedSpellsSection.createEl('h2', { 
+		  text: `Prepared Cantrips: ${knownCantrips}/${maxCantrips}\nPrepared Spells (${preparedSpells}/${maxPreparedSpells})` 
+		});
+		
+		// ✅ FUNÇÃO PARA RENDERIZAR MAGIAS PREPARADAS COM FILTROS
+		const renderFilteredPreparedSpells = (searchTerm: string = '', levelFilter: string = 'all') => {
+		  const preparedSpells = this.plugin.settings.knownSpells.filter(spell => spell.isPrepared);
+		  let filteredSpells = [...preparedSpells];
+		  
+		  // Apply search filter
+		  if (searchTerm.trim()) {
+			filteredSpells = filteredSpells.filter(spell => 
+			  spell.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+			  spell.description.toLowerCase().includes(searchTerm.toLowerCase())
+			);
+		  }
+		  
+		  // Apply level filter
+		  if (levelFilter !== 'all') {
+			const levelNum = parseInt(levelFilter);
+			filteredSpells = filteredSpells.filter(spell => spell.level === levelNum);
+		  }
+		  
+		  this.renderPreparedSpells(preparedSpellsSection, filteredSpells, searchTerm, levelFilter);
+		};
+		
+		// Initial render
+		renderFilteredPreparedSpells();
+		
+		// ✅ EVENT LISTENERS
+		searchInput.addEventListener('input', () => {
+		  renderFilteredPreparedSpells(searchInput.value, levelFilter.value);
+		});
+		
+		levelFilter.addEventListener('change', () => {
+		  renderFilteredPreparedSpells(searchInput.value, levelFilter.value);
+		});
+	}
 
-	renderPreparedSpells(container: HTMLElement) {
-		container.empty();
+	// ✅ MÉTODO RENDERIZAÇÃO ATUALIZADO COM MENSAGENS CONTEXTUAIS
+	renderPreparedSpells(container: HTMLElement, spells?: Spell[], searchTerm: string = '', levelFilter: string = 'all') {
+		// Clear previous content but keep the header
+		const existingContent = container.querySelectorAll('.spell-card, .no-spells-message, .prepared-level-section');
+		existingContent.forEach(el => el.remove());
 
-		const preparedSpells = this.plugin.settings.knownSpells.filter(spell => spell.isPrepared);
+		// Use provided spells or get all prepared spells
+		const preparedSpells = spells || this.plugin.settings.knownSpells.filter(spell => spell.isPrepared);
 		
 		if (preparedSpells.length === 0) {
-			container.createEl('p', { text: 'No spells prepared yet. Prepare spells from your Known Spells list.' });
+			let message;
+			
+			if (searchTerm.trim()) {
+				message = `No prepared spells found matching "${searchTerm}"`;
+				if (levelFilter !== 'all') {
+					message += ` in ${levelFilter === '0' ? 'cantrips' : `level ${levelFilter}`}`;
+				}
+				message += '.';
+			} else if (levelFilter !== 'all') {
+				const levelText = levelFilter === '0' ? 'cantrips' : `level ${levelFilter} spells`;
+				message = `No prepared ${levelText} found.`;
+			} else {
+				message = 'No spells prepared yet. Prepare spells from your Known Spells list.';
+			}
+			
+			container.createEl('p', { text: message, cls: 'no-spells-message' });
 			return;
 		}
 
+		// Group by level for better organization
+		const spellsByLevel: {[key: number]: Spell[]} = {};
 		preparedSpells.forEach(spell => {
-			const spellDiv = container.createDiv({ cls: 'spell-card prepared' });
+			if (!spellsByLevel[spell.level]) {
+				spellsByLevel[spell.level] = [];
+			}
+			spellsByLevel[spell.level].push(spell);
+		});
+
+		// Render each level group
+		Object.keys(spellsByLevel).sort((a, b) => parseInt(a) - parseInt(b)).forEach(level => {
+			const levelNum = parseInt(level);
+			const levelSpells = spellsByLevel[levelNum];
 			
-			// Spell Name and Level
-			spellDiv.createEl('h3', { 
-				text: `${spell.name} (Level ${spell.level})`,
-				cls: 'spell-name'
-			});
+			if (levelSpells.length > 0) {
+				const levelHeading = levelNum === 0 ? 'Prepared Cantrips' : `Prepared Level ${levelNum} Spells`;
+				const levelSection = container.createDiv({ cls: 'prepared-level-section' });
+				levelSection.createEl('h4', { text: `${levelHeading} (${levelSpells.length})` });
 
-      // Add extra spell uses badge if available
-const extraUse = this.plugin.settings.extraSpellUses.find(
-  e => e.spellName.toLowerCase() === spell.name.toLowerCase() && e.usesRemaining > 0
-);
-if (extraUse) {
-  const extraUsesBadge = spellDiv.createDiv({ cls: 'extra-uses-badge' });
-  extraUsesBadge.createEl('span', { 
-    text: `+${extraUse.usesRemaining} free uses` 
-  });
-  extraUsesBadge.setAttribute('title', `Extra uses from ${extraUse.source || 'unknown'}`);
-}
+				levelSpells.forEach(spell => {
+					const spellDiv = levelSection.createDiv({ cls: 'spell-card prepared' });
+					
+					// Spell Name and Level
+					spellDiv.createEl('h3', { 
+						text: `${spell.name} (${spell.level === 0 ? 'Cantrip' : `Level ${spell.level}`})`,
+						cls: 'spell-name'
+					});
 
+					// Add extra spell uses badge if available
+					const extraUse = this.plugin.settings.extraSpellUses.find(
+						e => e.spellName.toLowerCase() === spell.name.toLowerCase() && e.usesRemaining > 0
+					);
+					if (extraUse) {
+						const extraUsesBadge = spellDiv.createDiv({ cls: 'extra-uses-badge' });
+						extraUsesBadge.createEl('span', { 
+							text: `+${extraUse.usesRemaining} free uses` 
+						});
+						extraUsesBadge.setAttribute('title', `Extra uses from ${extraUse.source || 'unknown'}`);
+					}
 
-			// Description toggle container
-const descriptionContainer = spellDiv.createDiv({ cls: 'spell-description-container' });
-const descriptionToggle = descriptionContainer.createEl('button', {
-  text: 'Show Description',
-  cls: 'description-toggle'
-});
-const descriptionDiv = descriptionContainer.createDiv({ 
-  cls: 'spell-description hidden' 
-});
-descriptionDiv.createEl('p', { text: spell.description });
+					// Description toggle container
+					const descriptionContainer = spellDiv.createDiv({ cls: 'spell-description-container' });
+					const descriptionToggle = descriptionContainer.createEl('button', {
+						text: 'Show Description',
+						cls: 'description-toggle'
+					});
+					const descriptionDiv = descriptionContainer.createDiv({ 
+						cls: 'spell-description hidden' 
+					});
+					descriptionDiv.createEl('p', { text: spell.description });
 
-descriptionToggle.addEventListener('click', () => {
-  if (descriptionDiv.classList.contains('hidden')) {
-    descriptionDiv.classList.remove('hidden');
-    descriptionToggle.textContent = 'Hide Description';
-  } else {
-    descriptionDiv.classList.add('hidden');
-    descriptionToggle.textContent = 'Show Description';
-  }
-});
+					descriptionToggle.addEventListener('click', () => {
+						if (descriptionDiv.classList.contains('hidden')) {
+							descriptionDiv.classList.remove('hidden');
+							descriptionToggle.textContent = 'Hide Description';
+						} else {
+							descriptionDiv.classList.add('hidden');
+							descriptionToggle.textContent = 'Show Description';
+						}
+					});
 
-			// Unprepare Button
-			const unprepareBtn = spellDiv.createEl('button', {
-				text: 'Unprepare',
-				cls: 'unprepare-btn'
-			});
-			unprepareBtn.addEventListener('click', () => {
-				this.plugin.toggleSpellPreparation(spell.id);
-				this.refresh();
-			});
-      const castBtn = spellDiv.createEl('button', {
-          text: 'Cast',
-          cls: 'cast-spell-btn'
-      });
-      castBtn.addEventListener('click', () => {
-          this.plugin.castSpell(spell);
-          this.refresh();
-      });
+					// Button container
+					const buttonContainer = spellDiv.createDiv({ cls: 'spell-buttons' });
+
+					// Unprepare Button
+					const unprepareBtn = buttonContainer.createEl('button', {
+						text: 'Unprepare',
+						cls: 'unprepare-btn'
+					});
+					unprepareBtn.addEventListener('click', () => {
+						this.plugin.toggleSpellPreparation(spell.id);
+						this.refresh();
+					});
+					
+					const castBtn = buttonContainer.createEl('button', {
+						text: 'Cast',
+						cls: 'cast-spell-btn'
+					});
+					castBtn.addEventListener('click', () => {
+						this.plugin.castSpell(spell);
+						this.refresh();
+					});
+				});
+			}
 		});
 	}
 
@@ -593,7 +691,7 @@ descriptionToggle.addEventListener('click', () => {
 		const levelInput = form.createEl('select');
 		[0,1,2,3,4,5,6,7,8,9].forEach(level => {
 			levelInput.createEl('option', { 
-				text: `Level ${level}`, 
+				text: level === 0 ? 'Cantrip' : `Level ${level}`, 
 				value: level.toString() 
 			});
 		});
@@ -616,16 +714,16 @@ descriptionToggle.addEventListener('click', () => {
 			modalContainer.remove();
 			this.refresh();
 		});
-    
-    // Cancel Button
-    const cancelBtn = form.createEl('button', { 
-      text: 'Cancel',
-      cls: 'cancel-btn' 
-    });
-    cancelBtn.addEventListener('click', (e) => {
-      e.preventDefault();
-      modalContainer.remove();
-    });
+		
+		// Cancel Button
+		const cancelBtn = form.createEl('button', { 
+			text: 'Cancel',
+			cls: 'cancel-btn' 
+		});
+		cancelBtn.addEventListener('click', (e) => {
+			e.preventDefault();
+			modalContainer.remove();
+		});
 	}
 
 	async onClose(): Promise<void> {
@@ -633,13 +731,13 @@ descriptionToggle.addEventListener('click', () => {
 	}
 
 	refresh() {
-    // First make sure settings are saved
-    this.plugin.saveSettings();
-    
-    // Do a complete refresh like the KnownSpellsView does
-    this.containerEl.empty();
-    this.onOpen();
-  }
+		// First make sure settings are saved
+		this.plugin.saveSettings();
+		
+		// Do a complete refresh like the KnownSpellsView does
+		this.containerEl.empty();
+		this.onOpen();
+	}
 }
 
 class KnownSpellsView extends ItemView {
@@ -680,15 +778,14 @@ class KnownSpellsView extends ItemView {
     // Header
     scrollContainer.createEl('h2', { text: 'Known Spells' });
     const known = this.plugin.settings.knownSpells.length;
-const knownCantrips = this.plugin.settings.knownSpells.filter(s => s.level === 0).length;
-        const preparedSpells = this.plugin.settings.knownSpells.filter(s => s.level > 0 && s.isPrepared).length;
-        const maxCantrips = getCantripsKnownCount(this.plugin.settings.characterClass, this.plugin.settings.characterLevel);
-        const maxPreparedSpells = getPreparedSpellsMaxCount(this.plugin.settings.intelligenceModifier, this.plugin.settings.characterLevel);
+    const knownCantrips = this.plugin.settings.knownSpells.filter(s => s.level === 0).length;
+    const preparedSpells = this.plugin.settings.knownSpells.filter(s => s.level > 0 && s.isPrepared).length;
+    const maxCantrips = getCantripsKnownCount(this.plugin.settings.characterClass, this.plugin.settings.characterLevel);
+    const maxPreparedSpells = getPreparedSpellsMaxCount(this.plugin.settings.intelligenceModifier, this.plugin.settings.characterLevel);
 
-
-scrollContainer.createEl('p', {
-  text: `Cantrips: ${knownCantrips}/${maxCantrips}\n✅ Prepared: ${preparedSpells}/${maxPreparedSpells} | 📘 Total Known Spells: ${known}`
-});
+    scrollContainer.createEl('p', {
+      text: `Cantrips: ${knownCantrips}/${maxCantrips}\n✅ Prepared: ${preparedSpells}/${maxPreparedSpells} | 📘 Total Known Spells: ${known}`
+    });
     
     // Close button
     const closeButton = container.createEl('button', {
@@ -727,18 +824,35 @@ scrollContainer.createEl('p', {
       this.plugin.activateUnknownSpellsView();
     });
     
+    // ✅ BARRA DE PESQUISA
+    const searchContainer = scrollContainer.createDiv({ cls: 'search-container' });
+    searchContainer.createEl('label', { text: 'Search spells: ' });
+    const searchInput = searchContainer.createEl('input', {
+      type: 'text',
+      placeholder: 'Type spell name or description...',
+      cls: 'spell-search-input'
+    });
+    
     // Filter controls
     const filterContainer = scrollContainer.createDiv({ cls: 'filter-container' });
     
-    filterContainer.createEl('label', { text: 'Filter by level: ' });
+    filterContainer.createEl('label', { text: 'Level: ' });
     const levelFilter = filterContainer.createEl('select');
     levelFilter.createEl('option', { text: 'All Levels', value: 'all' });
-    [0,1,2,3,4,5,6,7,8,9].forEach(level => {
+    levelFilter.createEl('option', { text: 'Cantrips (Level 0)', value: '0' });
+    [1,2,3,4,5,6,7,8,9].forEach(level => {
       levelFilter.createEl('option', { 
         text: `Level ${level}`, 
         value: level.toString() 
       });
     });
+    
+    // ✅ FILTRO DE PREPARAÇÃO
+    filterContainer.createEl('label', { text: 'Status: ' });
+    const preparedFilter = filterContainer.createEl('select');
+    preparedFilter.createEl('option', { text: 'All Spells', value: 'all' });
+    preparedFilter.createEl('option', { text: 'Prepared Only', value: 'prepared' });
+    preparedFilter.createEl('option', { text: 'Unprepared Only', value: 'unprepared' });
     
     // Sort function for spells
     const sortByLevelName = (a: Spell, b: Spell) => {
@@ -748,17 +862,29 @@ scrollContainer.createEl('p', {
       return a.name.localeCompare(b.name);
     };
     
-    // Render all spells initially
-    this.renderSpells(scrollContainer, this.plugin.settings.knownSpells.sort(sortByLevelName));
-    
-    // Add event listener for level filter
-    levelFilter.addEventListener('change', () => {
-      const value = levelFilter.value;
+    // ✅ FUNÇÃO DE RENDERIZAÇÃO COM FILTROS
+    const renderFilteredSpells = (searchTerm: string = '', levelFilter: string = 'all', preparedFilter: string = 'all') => {
       let filteredSpells = [...this.plugin.settings.knownSpells];
       
-      if (value !== 'all') {
-        const levelNum = parseInt(value);
+      // Apply search filter
+      if (searchTerm.trim()) {
+        filteredSpells = filteredSpells.filter(spell => 
+          spell.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          spell.description.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+      }
+      
+      // Apply level filter
+      if (levelFilter !== 'all') {
+        const levelNum = parseInt(levelFilter);
         filteredSpells = filteredSpells.filter(spell => spell.level === levelNum);
+      }
+      
+      // Apply preparation filter
+      if (preparedFilter === 'prepared') {
+        filteredSpells = filteredSpells.filter(spell => spell.isPrepared);
+      } else if (preparedFilter === 'unprepared') {
+        filteredSpells = filteredSpells.filter(spell => !spell.isPrepared);
       }
       
       // Re-render with filtered list
@@ -767,16 +893,53 @@ scrollContainer.createEl('p', {
         spellsContainer.remove();
       }
       
-      this.renderSpells(scrollContainer, filteredSpells.sort(sortByLevelName));
+      this.renderSpells(scrollContainer, filteredSpells.sort(sortByLevelName), searchTerm, levelFilter, preparedFilter);
+    };
+    
+    // Render all spells initially
+    renderFilteredSpells();
+    
+    // ✅ EVENT LISTENERS
+    searchInput.addEventListener('input', () => {
+      renderFilteredSpells(searchInput.value, levelFilter.value, preparedFilter.value);
+    });
+    
+    levelFilter.addEventListener('change', () => {
+      renderFilteredSpells(searchInput.value, levelFilter.value, preparedFilter.value);
+    });
+    
+    preparedFilter.addEventListener('change', () => {
+      renderFilteredSpells(searchInput.value, levelFilter.value, preparedFilter.value);
     });
   }
   
-  renderSpells(container: HTMLElement, spells: Spell[]) {
+  // ✅ RENDERIZAÇÃO COM MENSAGENS CONTEXTUAIS
+  renderSpells(container: HTMLElement, spells: Spell[], searchTerm: string = '', levelFilter: string = 'all', preparedFilter: string = 'all') {
     // Create a dedicated container for the spells list
     const spellsContainer = container.createDiv({ cls: 'spells-list-container' });
     
     if (spells.length === 0) {
-      spellsContainer.createEl('p', { text: 'No spells found. Add some spells to your spellbook!' });
+      const noSpellsDiv = spellsContainer.createDiv({ cls: 'no-spells-message' });
+      let message;
+      
+      if (searchTerm.trim()) {
+        message = `No spells found matching "${searchTerm}"`;
+        if (levelFilter !== 'all') {
+          message += ` in ${levelFilter === '0' ? 'cantrips' : `level ${levelFilter}`}`;
+        }
+        if (preparedFilter !== 'all') {
+          message += ` (${preparedFilter} only)`;
+        }
+        message += '.';
+      } else if (levelFilter !== 'all' || preparedFilter !== 'all') {
+        const levelText = levelFilter === 'all' ? '' : (levelFilter === '0' ? 'cantrips' : `level ${levelFilter} spells`);
+        const prepText = preparedFilter === 'all' ? '' : `${preparedFilter} `;
+        message = `No ${prepText}${levelText} found.`.replace(/\s+/g, ' ').trim();
+      } else {
+        message = 'No spells found. Add some spells to your spellbook!';
+      }
+      
+      noSpellsDiv.createEl('p', { text: message });
       return;
     }
     
@@ -797,7 +960,7 @@ scrollContainer.createEl('p', {
       
       const levelHeading = levelNum === 0 ? 'Cantrips' : `Level ${levelNum} Spells`;
       const levelSection = spellsContainer.createDiv({ cls: 'spell-level-section' });
-      levelSection.createEl('h3', { text: levelHeading });
+      levelSection.createEl('h3', { text: `${levelHeading} (${levelSpells.length})` });
       
       levelSpells.forEach(spell => {
         const spellDiv = levelSection.createDiv({ 
@@ -809,6 +972,13 @@ scrollContainer.createEl('p', {
           text: spell.name,
           cls: 'spell-name'
         });
+        
+        // ✅ INDICADOR DE STATUS
+        const statusSpan = headerDiv.createEl('span', { 
+          text: spell.isPrepared ? '✅ Prepared' : '⏸ Unprepared',
+          cls: `spell-status ${spell.isPrepared ? 'prepared' : 'unprepared'}`
+        });
+        
         // Show extra uses badge if available
         const extraUse = this.plugin.settings.extraSpellUses.find(
           e => e.spellName.toLowerCase() === spell.name.toLowerCase() && e.usesRemaining > 0
@@ -820,6 +990,7 @@ scrollContainer.createEl('p', {
           });
           extraUsesBadge.setAttribute('title', `Extra uses from ${extraUse.source || 'unknown'}`);
         }
+        
         // Description with toggle
         const descriptionContainer = spellDiv.createDiv({ cls: 'spell-description-container' });
         const descriptionToggle = descriptionContainer.createEl('button', {
@@ -831,32 +1002,31 @@ scrollContainer.createEl('p', {
           cls: 'spell-description hidden' 
         });
         descriptionDiv.createEl('p', { text: spell.description });
-        if (spell.path) {
-  const linkBtn = descriptionContainer.createEl('button', {
-    text: '📄 Open Note',
-    cls: 'open-note-btn'
-  });
-
-  linkBtn.addEventListener('click', async () => {
-    const file = this.app.vault.getAbstractFileByPath(spell.path!) as TFile | null;
-
-    if (file && file instanceof TFile) {
-      // 🔄 Atualiza a descrição da spell com o conteúdo do arquivo
-      const content = await this.app.vault.read(file);
-      spell.description = content;
-
-      // Salva nos settings (seja known ou unknown)
-      await this.plugin.saveSettings();
-
-      // Abre a nota normalmente
-      this.app.workspace.getLeaf().openFile(file);
-    } else {
-      new Notice("Spell note not found or is not a valid file.");
-    }
-  });
-}
-
         
+        if (spell.path) {
+          const linkBtn = descriptionContainer.createEl('button', {
+            text: '📄 Open Note',
+            cls: 'open-note-btn'
+          });
+
+          linkBtn.addEventListener('click', async () => {
+            const file = this.app.vault.getAbstractFileByPath(spell.path!) as TFile | null;
+
+            if (file && file instanceof TFile) {
+              // 🔄 Atualiza a descrição da spell com o conteúdo do arquivo
+              const content = await this.app.vault.read(file);
+              spell.description = content;
+
+              // Salva nos settings (seja known ou unknown)
+              await this.plugin.saveSettings();
+
+              // Abre a nota normalmente
+              this.app.workspace.getLeaf().openFile(file);
+            } else {
+              new Notice("Spell note not found or is not a valid file.");
+            }
+          });
+        }
         
         descriptionToggle.addEventListener('click', () => {
           if (descriptionDiv.classList.contains('hidden')) {
@@ -890,7 +1060,7 @@ scrollContainer.createEl('p', {
               this.plugin.castSpell(spell);
               this.refresh();
           });
-      }
+        }
         
         // Delete Spell Button
         const deleteBtn = buttonContainer.createEl('button', {
@@ -922,7 +1092,7 @@ scrollContainer.createEl('p', {
     const levelInput = form.createEl('select');
     [0,1,2,3,4,5,6,7,8,9].forEach(level => {
       levelInput.createEl('option', { 
-        text: `Level ${level}`, 
+        text: level === 0 ? 'Cantrip' : `Level ${level}`, 
         value: level.toString() 
       });
     });
@@ -987,118 +1157,202 @@ class UnknownSpellsView extends ItemView {
     return "question-mark"; // change icon as desired
   }
 
-  async onOpen(): Promise<void> {
-    // Create the main container with navigation
-    const container = this.containerEl.createDiv({ cls: 'unknown-spells-container modern-spellbook-layout' });
+ async onOpen(): Promise<void> {
+  // Create the main container with navigation
+  const container = this.containerEl.createDiv({ cls: 'unknown-spells-container modern-spellbook-layout' });
+  
+  // Navigation buttons container
+  const navButtons = container.createDiv({ cls: 'spellbook-nav-buttons' });
+  // "Back to Spellbook" button:
+  const backButton = navButtons.createEl('button', {
+    text: 'Back to Spellbook',
+    cls: 'nav-btn'
+  });
+  backButton.addEventListener('click', () => {
+    this.plugin.activateView();
+  });
+  
+  // ✅ BARRA DE PESQUISA
+  const searchContainer = container.createDiv({ cls: 'search-container' });
+  searchContainer.createEl('label', { text: 'Search spells: ' });
+  const searchInput = searchContainer.createEl('input', {
+    type: 'text',
+    placeholder: 'Type spell name...',
+    cls: 'spell-search-input'
+  });
+  
+  // Create a filter control to choose a level (0-9) or All Levels
+  const filterContainer = container.createDiv({ cls: 'filter-container' });
+  filterContainer.createEl('label', { text: 'Filter by level: ' });
+  const levelFilter = filterContainer.createEl('select');
+  levelFilter.createEl('option', { text: 'All Levels', value: 'all' });
+  levelFilter.createEl('option', { text: 'Cantrips (Level 0)', value: '0' }); // ✅ ADICIONADO
+  for (let i = 1; i <= 9; i++) {
+    levelFilter.createEl('option', { text: `Level ${i}`, value: i.toString() });
+  }
+  
+  // Add scrollable content wrapper
+  const scrollContainer = container.createDiv({ cls: 'spellbook-scroll-container' });
+  scrollContainer.style.maxHeight = '70vh';
+  scrollContainer.style.overflowY = 'auto';
+  scrollContainer.style.paddingRight = '10px';
+  
+  // Header for the view
+  scrollContainer.createEl('h2', { text: 'Unknown Spells' });
+  
+  // Function to render unknown spells with optional level and search filters.
+  const renderUnknownSpells = (filterLevel: string, searchTerm: string = '') => {
+    // Remove any previously rendered groups
+    scrollContainer.querySelectorAll('.unknown-spell-group').forEach(e => e.remove());
     
-    // Navigation buttons container
-    const navButtons = container.createDiv({ cls: 'spellbook-nav-buttons' });
-    // "Back to Spellbook" button:
-    const backButton = navButtons.createEl('button', {
-      text: 'Back to Spellbook',
-      cls: 'nav-btn'
-    });
-    backButton.addEventListener('click', () => {
-      this.plugin.activateView();
-    });
+    // Get all unknown spells from settings
+    let spells = this.plugin.settings.unknownSpells || [];
     
-    // Create a filter control to choose a level (1-9) or All Levels
-    const filterContainer = container.createDiv({ cls: 'filter-container' });
-    filterContainer.createEl('label', { text: 'Filter by level: ' });
-    const levelFilter = filterContainer.createEl('select');
-    levelFilter.createEl('option', { text: 'All Levels', value: 'all' });
-    for (let i = 1; i <= 9; i++) {
-      levelFilter.createEl('option', { text: `Level ${i}`, value: i.toString() });
+    // Apply search filter
+    if (searchTerm.trim()) {
+      spells = spells.filter(spell => 
+        spell.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        spell.description.toLowerCase().includes(searchTerm.toLowerCase())
+      );
     }
     
-    // Add scrollable content wrapper
-    const scrollContainer = container.createDiv({ cls: 'spellbook-scroll-container' });
-    scrollContainer.style.maxHeight = '70vh';
-    scrollContainer.style.overflowY = 'auto';
-    scrollContainer.style.paddingRight = '10px';
+    // Apply level filter
+    if (filterLevel !== 'all') {
+      const levelNum = parseInt(filterLevel);
+      spells = spells.filter(s => s.level === levelNum);
+    }
     
-    // Header for the view
-    scrollContainer.createEl('h2', { text: 'Unknown Spells' });
+    // Sort the spells by level (ascending)
+    spells = spells.sort((a, b) => a.level - b.level);
     
-    // Function to render unknown spells with an optional level filter.
-    const renderUnknownSpells = (filterLevel: string) => {
-      // Remove any previously rendered groups
-      scrollContainer.querySelectorAll('.unknown-spell-group').forEach(e => e.remove());
-      
-      // Get all unknown spells from settings
-      let spells = this.plugin.settings.unknownSpells || [];
-      // If filtering, only keep spells with the chosen level.
-      if (filterLevel !== 'all') {
-        const levelNum = parseInt(filterLevel);
-        spells = spells.filter(s => s.level === levelNum);
-      }
-      // Sort the spells by level (ascending)
-      spells = spells.sort((a, b) => a.level - b.level);
-      
-      // Group spells by level (levels 1 to 9)
-      // Explicitly type the grouping object as a Record mapping number keys to arrays of Spell
-const spellsByLevel: { [key: number]: Spell[] } = {};
+    // Group spells by level (levels 0 to 9) - ✅ INCLUINDO CANTRIPS
+    const spellsByLevel: { [key: number]: Spell[] } = {};
 
-// Also provide an explicit type for the callback parameter 'spell'
-spells.forEach((spell: Spell) => {
-  const lvl = spell.level;
-  if (!spellsByLevel[lvl]) {
-    spellsByLevel[lvl] = [];
-  }
-  spellsByLevel[lvl].push(spell);
-});
-
-      
-      // Render groups for levels 1 to 9 in order.
-      for (let level = 1; level <= 9; level++) {
-        if (spellsByLevel[level] && spellsByLevel[level].length > 0) {
-          const levelSection = scrollContainer.createDiv({ cls: 'unknown-spell-group' });
-          levelSection.createEl('h3', { text: `Level ${level} Spells` });
-          
-          spellsByLevel[level].forEach(spell => {
-            const spellDiv = levelSection.createDiv({ cls: 'spell-card unknown' });
-            
-            // Create a header with the spell name and level
-            const headerDiv = spellDiv.createDiv({ cls: 'spell-header' });
-            headerDiv.createEl('h4', { text: spell.name, cls: 'spell-name' });
-            headerDiv.createEl('span', { text: `Level ${spell.level}`, cls: 'spell-level' });
-            
-            // Add the description (if available)
-            if (spell.description) {
-              spellDiv.createEl('p', { text: spell.description, cls: 'spell-description' });
-            }
-            
-            // Button to "Learn" the spell (moves it from unknown to known)
-            const learnBtn = spellDiv.createEl('button', { text: 'Learn Spell', cls: 'learn-spell-btn' });
-            learnBtn.addEventListener('click', () => {
-              this.plugin.learnSpell(spell.id);
-              // Immediately refresh the view so the spell is removed from unknowns
-              this.refresh();
-            });
-          });
-        }
+    spells.forEach((spell: Spell) => {
+      const lvl = spell.level;
+      if (!spellsByLevel[lvl]) {
+        spellsByLevel[lvl] = [];
       }
-    };
-  
-    // Initially render all unknown spells.
-    renderUnknownSpells('all');
-  
-    // Update the view when the filter is changed.
-    levelFilter.addEventListener('change', () => {
-      renderUnknownSpells(levelFilter.value);
+      spellsByLevel[lvl].push(spell);
     });
-  }
-  
-  
+    
+    // Render groups for levels 0 to 9 in order - ✅ MUDANÇA AQUI: level = 0
+    for (let level = 0; level <= 9; level++) {
+      if (spellsByLevel[level] && spellsByLevel[level].length > 0) {
+        const levelSection = scrollContainer.createDiv({ cls: 'unknown-spell-group' });
+        // ✅ TRATAMENTO ESPECIAL PARA CANTRIPS
+        const levelTitle = level === 0 ? 'Cantrips' : `Level ${level} Spells`;
+        levelSection.createEl('h3', { text: levelTitle });
+        
+        spellsByLevel[level].forEach(spell => {
+          const spellDiv = levelSection.createDiv({ cls: 'spell-card unknown' });
+          
+          // Create a header with the spell name and level
+          const headerDiv = spellDiv.createDiv({ cls: 'spell-header' });
+          headerDiv.createEl('h4', { text: spell.name, cls: 'spell-name' });
+          // ✅ TRATAMENTO ESPECIAL PARA MOSTRAR "Cantrip" AO INVÉS DE "Level 0"
+          const levelText = spell.level === 0 ? 'Cantrip' : `Level ${spell.level}`;
+          headerDiv.createEl('span', { text: levelText, cls: 'spell-level' });
+          
+          // Add the description (if available) - ✅ MELHORADA COM TOGGLE
+          if (spell.description) {
+            const descriptionContainer = spellDiv.createDiv({ cls: 'spell-description-container' });
+            const descriptionToggle = descriptionContainer.createEl('button', {
+              text: 'Show Description',
+              cls: 'description-toggle'
+            });
+            
+            const descriptionDiv = descriptionContainer.createDiv({ 
+              cls: 'spell-description hidden' 
+            });
+            descriptionDiv.createEl('p', { text: spell.description });
+            
+            descriptionToggle.addEventListener('click', () => {
+              if (descriptionDiv.classList.contains('hidden')) {
+                descriptionDiv.classList.remove('hidden');
+                descriptionToggle.textContent = 'Hide Description';
+              } else {
+                descriptionDiv.classList.add('hidden');
+                descriptionToggle.textContent = 'Show Description';
+              }
+            });
+          }
+          
+          // ✅ CONTAINER PARA BOTÕES
+          const buttonContainer = spellDiv.createDiv({ cls: 'spell-buttons' });
+          
+          // Button to "Learn" the spell (moves it from unknown to known)
+          const learnBtn = buttonContainer.createEl('button', { 
+            text: 'Learn Spell', 
+            cls: 'learn-spell-btn' 
+          });
+          learnBtn.addEventListener('click', () => {
+            this.plugin.learnSpell(spell.id);
+            // Immediately refresh the view so the spell is removed from unknowns
+            this.refresh();
+          });
+          
+          // ✅ BOTÃO PARA DELETAR PERMANENTEMENTE
+          const deleteBtn = buttonContainer.createEl('button', {
+            text: 'Delete',
+            cls: 'delete-btn'
+          });
+          deleteBtn.addEventListener('click', () => {
+            if (confirm(`Are you sure you want to permanently delete "${spell.name}"?`)) {
+              const index = this.plugin.settings.unknownSpells.findIndex(s => s.id === spell.id);
+              if (index !== -1) {
+                this.plugin.settings.unknownSpells.splice(index, 1);
+                this.plugin.saveSettings();
+                this.refresh();
+                new Notice(`Deleted "${spell.name}" from unknown spells.`);
+              }
+            }
+          });
+        });
+      }
+    }
+    
+    // ✅ MENSAGEM QUANDO NÃO HÁ MAGIAS
+    if (spells.length === 0) {
+      const noSpellsDiv = scrollContainer.createDiv({ cls: 'no-spells-message' });
+      let message;
+      
+      if (searchTerm.trim() && filterLevel !== 'all') {
+        message = `No spells found matching "${searchTerm}" in ${filterLevel === '0' ? 'cantrips' : `level ${filterLevel}`}.`;
+      } else if (searchTerm.trim()) {
+        message = `No spells found matching "${searchTerm}".`;
+      } else if (filterLevel !== 'all') {
+        message = `No unknown ${filterLevel === '0' ? 'cantrips' : `level ${filterLevel} spells`} found.`;
+      } else {
+        message = 'No unknown spells found. Import spells from notes to populate this list!';
+      }
+      
+      noSpellsDiv.createEl('p', { text: message });
+    }
+  };
 
-  async onClose(): Promise<void> {
-    this.containerEl.empty();
-  }
+  // Initially render all unknown spells.
+  renderUnknownSpells('all', '');
 
-  refresh() {
-    this.containerEl.empty();
-    this.onOpen();
-  }
+  // ✅ EVENT LISTENERS PARA PESQUISA E FILTRO
+  searchInput.addEventListener('input', () => {
+    renderUnknownSpells(levelFilter.value, searchInput.value);
+  });
+
+  // Update the view when the filter is changed.
+  levelFilter.addEventListener('change', () => {
+    renderUnknownSpells(levelFilter.value, searchInput.value);
+  });
+ }
+
+ async onClose(): Promise<void> {
+  this.containerEl.empty();
+ } 
+
+ refresh() {
+  this.containerEl.empty();
+  this.onOpen();
+ }
 }
 
 
