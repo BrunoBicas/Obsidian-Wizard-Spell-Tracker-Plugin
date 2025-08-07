@@ -35,6 +35,7 @@ function getCantripsKnownCount(characterClass: string, level: number): number {
   const className = characterClass ? characterClass.charAt(0).toUpperCase() + characterClass.slice(1).toLowerCase() : '';
   const progression = CANTRIPS_KNOWN_BY_CLASS_LEVEL[className];
   if (!progression) return 0;
+  
   let count = 0;
   for (const entry of progression) {
     if (level >= entry.level) {
@@ -46,9 +47,27 @@ function getCantripsKnownCount(characterClass: string, level: number): number {
   return count;
 }
 
+function getCantripsKnownCountWithBonus(characterClass: string, level: number, bonuses: SpellBonuses[]): number {
+  const baseCantrips = getCantripsKnownCount(characterClass, level);
+  const totalBonus = bonuses.reduce((sum, bonus) => sum + (bonus.bonusCantrips || 0), 0);
+  return baseCantrips + totalBonus;
+}
+
+function getPreparedSpellsMaxCountWithBonus(intModifier: number, charLevel: number, bonuses: SpellBonuses[]): number {
+  const baseSpells = getPreparedSpellsMaxCount(intModifier, charLevel);
+  const totalBonus = bonuses.reduce((sum, bonus) => sum + (bonus.bonusPreparedSpells || 0), 0);
+  return baseSpells + totalBonus;
+}
+
 function getPreparedSpellsMaxCount(intModifier: number, charLevel: number): number {
   const count = intModifier + charLevel;
   return Math.max(1, count); 
+}
+
+interface SpellBonuses {
+  bonusCantrips?: number;
+  bonusPreparedSpells?: number;
+  source?: string;
 }
 
 interface DnDSpellbookSettings {
@@ -73,6 +92,7 @@ interface DnDSpellbookSettings {
   level7FolderPath: string;
   level8FolderPath: string;
   level9FolderPath: string;
+  spellBonuses: SpellBonuses[];
 }
 
 interface Spell {
@@ -121,7 +141,8 @@ const DEFAULT_SETTINGS: DnDSpellbookSettings = {
   level7FolderPath: '',
   level8FolderPath: '',
   level9FolderPath: '',
-  bonusSpellSlots: []
+  bonusSpellSlots: [],
+  spellBonuses: []
 };
 
 // Function to calculate spell slots based on class and level
@@ -435,15 +456,15 @@ class SpellbookView extends ItemView {
 		
 		// Spell Count Summary
 		const known = this.plugin.settings.knownSpells.length;
-		const unknown = this.plugin.settings.unknownSpells.length;
-		const knownCantrips = this.plugin.settings.knownSpells.filter(s => s.level === 0).length;
-		const preparedSpells = this.plugin.settings.knownSpells.filter(s => s.level > 0 && s.isPrepared).length;
-		const maxCantrips = getCantripsKnownCount(this.plugin.settings.characterClass, this.plugin.settings.characterLevel);
-		const maxPreparedSpells = getPreparedSpellsMaxCount(this.plugin.settings.intelligenceModifier, this.plugin.settings.characterLevel);
+    const unknown = this.plugin.settings.unknownSpells.length;
+    const preparedCantrips = this.plugin.settings.knownSpells.filter(s => s.level === 0 && s.isPrepared).length; // MUDANÇA: só cantrips preparados
+    const preparedSpells = this.plugin.settings.knownSpells.filter(s => s.level > 0 && s.isPrepared).length;
+    const maxCantrips = getCantripsKnownCountWithBonus(this.plugin.settings.characterClass, this.plugin.settings.characterLevel, this.plugin.settings.spellBonuses);
+    const maxPreparedSpells = getPreparedSpellsMaxCountWithBonus(this.plugin.settings.intelligenceModifier, this.plugin.settings.characterLevel, this.plugin.settings.spellBonuses);
 
 		charInfoSection.createEl('p', {
-		  text: `📘 Known: ${known} | ❓ Unknown: ${unknown} | Cantrips: ${knownCantrips}/${maxCantrips} ✅ Prepared: ${preparedSpells}/${maxPreparedSpells}`
-		});
+      text: `📘 Known: ${known} | ❓ Unknown: ${unknown} | Cantrips: ${preparedCantrips}/${maxCantrips} ✅ Prepared: ${preparedSpells}/${maxPreparedSpells}`
+    });
 	  
 		// Spell Slots Section
 		const spellSlotsSection = scrollContainer.createDiv({ cls: 'spell-slots-section' });
@@ -521,9 +542,10 @@ class SpellbookView extends ItemView {
 		// Prepared Spells Section
 		const preparedSpellsSection = scrollContainer.createDiv({ cls: 'prepared-spells-section' });
 		const preparedCount = this.plugin.settings.knownSpells.filter(spell => spell.isPrepared).length;
-		preparedSpellsSection.createEl('h2', { 
-		  text: `Prepared Cantrips: ${knownCantrips}/${maxCantrips}\nPrepared Spells (${preparedSpells}/${maxPreparedSpells})` 
-		});
+    preparedSpellsSection.createEl('h2', { 
+      text: `Prepared Cantrips: ${preparedCantrips}/${maxCantrips}\nPrepared Spells (${preparedSpells}/${maxPreparedSpells})` 
+    });
+
 		
 		// ✅ FUNÇÃO PARA RENDERIZAR MAGIAS PREPARADAS COM FILTROS
 		const renderFilteredPreparedSpells = (searchTerm: string = '', levelFilter: string = 'all') => {
@@ -776,15 +798,14 @@ class KnownSpellsView extends ItemView {
     scrollContainer.style.paddingRight = '10px';
     
     // Header
-    scrollContainer.createEl('h2', { text: 'Known Spells' });
     const known = this.plugin.settings.knownSpells.length;
-    const knownCantrips = this.plugin.settings.knownSpells.filter(s => s.level === 0).length;
+    const preparedCantrips = this.plugin.settings.knownSpells.filter(s => s.level === 0 && s.isPrepared).length; // MUDANÇA: só cantrips preparados
     const preparedSpells = this.plugin.settings.knownSpells.filter(s => s.level > 0 && s.isPrepared).length;
-    const maxCantrips = getCantripsKnownCount(this.plugin.settings.characterClass, this.plugin.settings.characterLevel);
-    const maxPreparedSpells = getPreparedSpellsMaxCount(this.plugin.settings.intelligenceModifier, this.plugin.settings.characterLevel);
+    const maxCantrips = getCantripsKnownCountWithBonus(this.plugin.settings.characterClass, this.plugin.settings.characterLevel, this.plugin.settings.spellBonuses);
+    const maxPreparedSpells = getPreparedSpellsMaxCountWithBonus(this.plugin.settings.intelligenceModifier, this.plugin.settings.characterLevel, this.plugin.settings.spellBonuses);
 
     scrollContainer.createEl('p', {
-      text: `Cantrips: ${knownCantrips}/${maxCantrips}\n✅ Prepared: ${preparedSpells}/${maxPreparedSpells} | 📘 Total Known Spells: ${known}`
+      text: `Cantrips: ${preparedCantrips}/${maxCantrips}\n✅ Prepared: ${preparedSpells}/${maxPreparedSpells} | 📘 Total Known Spells: ${known}`
     });
     
     // Close button
@@ -1361,6 +1382,54 @@ export default class DnDSpellbookPlugin extends Plugin {
     spellFolderPath?: string;
   };
   
+  async scanSpecificNoteForBonuses(file: TFile): Promise<SpellBonuses | null> {
+    try {
+      const content = await this.app.vault.read(file);
+      
+      // Procura por frontmatter YAML
+      const yamlMatch = content.match(/^---\n([\s\S]*?)\n---/);
+      if (!yamlMatch) return null;
+      
+      const yamlContent = yamlMatch[1];
+      
+      // Regex para encontrar spell bonuses no YAML
+      const cantripBonusMatch = yamlContent.match(/bonus[_-]?cantrips?\s*:\s*(\d+)/i);
+      const preparedBonusMatch = yamlContent.match(/bonus[_-]?prepared[_-]?spells?\s*:\s*(\d+)/i);
+      
+      let foundBonus = false;
+      const newBonus: SpellBonuses = {};
+      
+      if (cantripBonusMatch) {
+        newBonus.bonusCantrips = parseInt(cantripBonusMatch[1]);
+        foundBonus = true;
+      }
+      
+      if (preparedBonusMatch) {
+        newBonus.bonusPreparedSpells = parseInt(preparedBonusMatch[1]);
+        foundBonus = true;
+      }
+      
+      if (foundBonus) {
+        // Remove bônus anterior desta mesma nota se existir
+        this.settings.spellBonuses = this.settings.spellBonuses.filter(
+          bonus => bonus.source !== file.basename
+        );
+        
+        // Adiciona o novo bônus
+        newBonus.source = file.basename;
+        this.settings.spellBonuses.push(newBonus);
+        
+        await this.saveSettings();
+        return newBonus;
+      }
+      
+      return null;
+      
+    } catch (error) {
+      console.error(`Erro lendo arquivo ${file.path}:`, error);
+      return null;
+    }
+  }
   
     // Permitir que outro plugin adicione spell slots bônus
 	public addBonusSpellSlot(level: number, amount: number, source = "external") {
@@ -1782,24 +1851,36 @@ new Notice(`Magia "${spell.name}" criada com sucesso.`);
   }
   
 
-	toggleSpellPreparation(spellId: string) {
+  toggleSpellPreparation(spellId: string) {
     const spell = this.settings.knownSpells.find(s => s.id === spellId);
-    if (spell) {
-      // If trying to prepare a spell (i.e., it is currently unprepared)
-      if (!spell.isPrepared) {
-        // Count how many spells are already prepared
-        const preparedCount = this.settings.knownSpells.filter(s => s.isPrepared).length;
-        // Maximum allowed is characterLevel + intelligenceModifier
-        const maxPrepared = this.settings.characterLevel + this.settings.intelligenceModifier;
-        if (preparedCount >= maxPrepared) {
+    if (!spell) return;
+    
+    // If trying to prepare a spell (i.e., it is currently unprepared)
+    if (!spell.isPrepared) {
+      if (spell.level === 0) {
+        // For cantrips (level 0), check against cantrip limit WITH bonuses
+        const preparedCantrips = this.settings.knownSpells.filter(s => s.level === 0 && s.isPrepared).length;
+        const maxCantrips = getCantripsKnownCountWithBonus(this.settings.characterClass, this.settings.characterLevel, this.settings.spellBonuses);
+        
+        if (preparedCantrips >= maxCantrips) {
+          new Notice(`You can only prepare ${maxCantrips} cantrips.`);
+          return;
+        }
+      } else {
+        // For spells (level 1+), check against prepared spells limit WITH bonuses
+        const preparedSpells = this.settings.knownSpells.filter(s => s.level > 0 && s.isPrepared).length;
+        const maxPrepared = getPreparedSpellsMaxCountWithBonus(this.settings.intelligenceModifier, this.settings.characterLevel, this.settings.spellBonuses);
+        
+        if (preparedSpells >= maxPrepared) {
           new Notice(`You can only prepare ${maxPrepared} spells.`);
-          return; // Do not toggle preparation
+          return;
         }
       }
-      // Toggle the spell's preparation state
-      spell.isPrepared = !spell.isPrepared;
-      this.saveSettings();
     }
+    
+    // Toggle the spell's preparation state
+    spell.isPrepared = !spell.isPrepared;
+    this.saveSettings();
   }
   
 
@@ -2431,6 +2512,102 @@ new Setting(containerEl)
     containerEl.createEl('p', { 
       text: `You currently know ${spellCount} spells and have ${preparedCount} prepared.` 
     });   
+
+    containerEl.createEl('h3', { text: 'Spell Preparation Bonuses' });
+    containerEl.createEl('p', { text: 'Extra cantrips and prepared spells from feats, magic items, etc.' });
+
+    // Display existing bonuses
+    const bonusContainer2 = containerEl.createDiv({ cls: 'spell-bonuses-container' });
+    this.plugin.settings.spellBonuses.forEach((bonus, index) => {
+      const bonusDiv = bonusContainer2.createDiv({ cls: 'spell-bonus-item' });
+      
+      let bonusText = '';
+      if (bonus.bonusCantrips) bonusText += `+${bonus.bonusCantrips} cantrips `;
+      if (bonus.bonusPreparedSpells) bonusText += `+${bonus.bonusPreparedSpells} prepared spells `;
+      bonusText += `(${bonus.source || 'Unknown'})`;
+      
+      bonusDiv.createEl('span', { text: bonusText });
+      
+      const removeBtn = bonusDiv.createEl('button', {
+        text: 'Remove',
+        cls: 'remove-bonus-btn'
+      });
+      removeBtn.addEventListener('click', async () => {
+        this.plugin.settings.spellBonuses.splice(index, 1);
+        await this.plugin.saveSettings();
+        this.display();
+      });
+    });
+
+    new Setting(containerEl)
+  .setName('Scan Specific Note for Bonuses')
+  .setDesc('Select a note to scan for YAML frontmatter with "bonus-cantrips" and "bonus-prepared-spells"')
+  .addDropdown(dropdown => {
+    dropdown.addOption('', 'Select a note...');
+    
+    // Pega todas as notas markdown
+    const markdownFiles = this.app.vault.getMarkdownFiles();
+    markdownFiles.forEach(file => {
+      dropdown.addOption(file.path, file.basename);
+    });
+    
+    dropdown.onChange(async (selectedPath: string) => {
+      if (selectedPath) {
+        const file = this.app.vault.getAbstractFileByPath(selectedPath) as TFile;
+        if (file) {
+          const bonus = await this.plugin.scanSpecificNoteForBonuses(file);
+          if (bonus) {
+            new Notice(`Found bonuses in "${file.basename}"`);
+            this.display();
+          } else {
+            new Notice(`No bonuses found in "${file.basename}"`);
+          }
+        }
+      }
+    });
+  });
+
+  // Botão para adicionar bônus manual
+  new Setting(containerEl)
+    .setName('Add Manual Bonus')
+    .addText(text => {
+      text.setPlaceholder("Bonus cantrips (number)");
+      text.inputEl.addClass('bonus-cantrips-input');
+      return text;
+    })
+    .addText(text => {
+      text.setPlaceholder("Bonus prepared spells (number)");
+      text.inputEl.addClass('bonus-prepared-input');
+      return text;
+    })
+    .addText(text => {
+      text.setPlaceholder("Source name");
+      text.inputEl.addClass('bonus-source-input');
+      return text;
+    })
+    .addButton(button => {
+      button.setButtonText('Add');
+      button.onClick(async () => {
+        const cantripsInput = document.querySelector('.bonus-cantrips-input') as HTMLInputElement;
+        const preparedInput = document.querySelector('.bonus-prepared-input') as HTMLInputElement;
+        const sourceInput = document.querySelector('.bonus-source-input') as HTMLInputElement;
+        
+        const bonusCantrips = parseInt(cantripsInput?.value || "0") || 0;
+        const bonusPrepared = parseInt(preparedInput?.value || "0") || 0;
+        const source = sourceInput?.value || "Manual";
+        
+        if (bonusCantrips > 0 || bonusPrepared > 0) {
+          this.plugin.settings.spellBonuses.push({
+            bonusCantrips: bonusCantrips > 0 ? bonusCantrips : undefined,
+            bonusPreparedSpells: bonusPrepared > 0 ? bonusPrepared : undefined,
+            source: source
+          });
+          
+          await this.plugin.saveSettings();
+          this.display();
+        }
+      });
+    });
 	
 	new Setting(containerEl)
   .setName("Limpar magias desconhecidas aprendidas")
@@ -2493,13 +2670,12 @@ new Setting(containerEl)
     .setDesc(`Aqui você pode ver um resumo de seus truques e magias.`)
     .addTextArea(text => {
         // Calcula os totais
-        const knownCantrips = this.plugin.settings.knownSpells.filter(s => s.level === 0).length;
+        const preparedCantrips = this.plugin.settings.knownSpells.filter(s => s.level === 0 && s.isPrepared).length; // MUDANÇA: só cantrips preparados
         const preparedSpells = this.plugin.settings.knownSpells.filter(s => s.level > 0 && s.isPrepared).length;
-        const maxCantrips = getCantripsKnownCount(this.plugin.settings.characterClass, this.plugin.settings.characterLevel);
-        const maxPreparedSpells = getPreparedSpellsMaxCount(this.plugin.settings.intelligenceModifier, this.plugin.settings.characterLevel);
-
+        const maxCantrips = getCantripsKnownCountWithBonus(this.plugin.settings.characterClass, this.plugin.settings.characterLevel, this.plugin.settings.spellBonuses);
+        const maxPreparedSpells = getPreparedSpellsMaxCountWithBonus(this.plugin.settings.intelligenceModifier, this.plugin.settings.characterLevel, this.plugin.settings.spellBonuses);
         // Define o valor e o placeholder da área de texto
-        text.setValue(`Truques: ${knownCantrips}/${maxCantrips}\nMagias Preparadas: ${preparedSpells}/${maxPreparedSpells}`);
+         text.setValue(`Truques: ${preparedCantrips}/${maxCantrips}\nMagias Preparadas: ${preparedSpells}/${maxPreparedSpells}`);
         
         // Desabilita a área de texto para que seja apenas leitura
         text.inputEl.setAttr("readonly", true);
