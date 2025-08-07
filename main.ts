@@ -64,6 +64,10 @@ function getPreparedSpellsMaxCount(intModifier: number, charLevel: number): numb
   return Math.max(1, count); 
 }
 
+function generateUniqueSpellId(): string {
+  return `spell_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+}
+
 interface SpellBonuses {
   bonusCantrips?: number;
   bonusPreparedSpells?: number;
@@ -727,7 +731,7 @@ class SpellbookView extends ItemView {
 		submitBtn.addEventListener('click', (e) => {
 			e.preventDefault();
 			this.plugin.addSpell({
-				id: Date.now().toString(),
+				id: generateUniqueSpellId(),
 				name: nameInput.value,
 				level: parseInt(levelInput.value),
 				description: descInput.value,
@@ -1127,7 +1131,7 @@ class KnownSpellsView extends ItemView {
     submitBtn.addEventListener('click', (e) => {
       e.preventDefault();
       this.plugin.addSpell({
-        id: Date.now().toString(),
+        id: generateUniqueSpellId(),
         name: nameInput.value,
         level: parseInt(levelInput.value),
         description: descInput.value,
@@ -1552,21 +1556,68 @@ export default class DnDSpellbookPlugin extends Plugin {
 		document.head.appendChild(styleElement);
 	  }
 
+    refreshAllViews() {
+      // Refresh SpellbookView
+      const spellbookLeaves = this.app.workspace.getLeavesOfType(SPELLBOOK_VIEW_TYPE);
+      spellbookLeaves.forEach(leaf => {
+        const view = leaf.view as SpellbookView;
+        if (view && view.refresh) {
+          view.refresh();
+        }
+      });
+      
+      // Refresh KnownSpellsView
+      const knownSpellsLeaves = this.app.workspace.getLeavesOfType(KNOWN_SPELLS_VIEW_TYPE);
+      knownSpellsLeaves.forEach(leaf => {
+        const view = leaf.view as KnownSpellsView;
+        if (view && view.refresh) {
+          view.refresh();
+        }
+      });
+      
+      // Refresh UnknownSpellsView
+      const unknownSpellsLeaves = this.app.workspace.getLeavesOfType(UNKNOWN_SPELLS_VIEW_TYPE);
+      unknownSpellsLeaves.forEach(leaf => {
+        const view = leaf.view as UnknownSpellsView;
+        if (view && view.refresh) {
+          view.refresh();
+        }
+      });
+    }
+
     async learnSpell(spellId: string) {
-      // Find the unknown spell by its ID.
+      console.log(`Learning spell with ID: ${spellId}`); // Debug log
+      
       const index = this.settings.unknownSpells.findIndex(s => s.id === spellId);
-      if (index !== -1) {
-        const spell = this.settings.unknownSpells.splice(index, 1)[0];
-      
-        // Remove any other spells with the same name (case-insensitive)
-        this.settings.unknownSpells = this.settings.unknownSpells.filter(
-          s => s.name.toLowerCase() !== spell.name.toLowerCase()
-        );
-      
-        await this.createSpellWithNote(spell);
-        this.saveSettings();
-        new Notice(`Learned spell: ${spell.name}`);
+      if (index === -1) {
+        console.error(`Spell with ID ${spellId} not found in unknown spells`);
+        new Notice('Spell not found!');
+        return;
       }
+
+      const spell = this.settings.unknownSpells[index];
+      console.log(`Learning spell: ${spell.name}`); // Debug log
+
+      // Remove from unknown spells
+      this.settings.unknownSpells.splice(index, 1);
+
+      // Remove any other spells with the same name (case-insensitive)
+      this.settings.unknownSpells = this.settings.unknownSpells.filter(
+        s => s.name.toLowerCase() !== spell.name.toLowerCase()
+      );
+
+      // Add to known spells with new unique ID
+      const learnedSpell = {
+        ...spell,
+        id: generateUniqueSpellId(), // NEW UNIQUE ID
+        isPrepared: false
+      };
+
+      await this.createSpellWithNote(learnedSpell);
+      new Notice(`Learned spell: ${spell.name}`);
+      
+      // Refresh all views
+      this.refreshAllViews();
     }
 
     async scanNotesForTaggedSpells() {
@@ -1828,32 +1879,57 @@ new Notice(`Magia "${spell.name}" criada com sucesso.`);
 		this.settings.knownSpells = this.settings.knownSpells.filter(spell => spell.id !== spellId);
 		this.saveSettings();
 	}
+
   moveSpellToUnknown(spellId: string) {
+    console.log(`Moving spell to unknown, ID: ${spellId}`); // Debug log
+    
     const index = this.settings.knownSpells.findIndex(s => s.id === spellId);
-    if (index !== -1) {
-      const spell = this.settings.knownSpells.splice(index, 1)[0];
-  
-      // Evita duplicatas na lista de unknown spells
-      const alreadyInUnknown = this.settings.unknownSpells.some(
-        s => s.name.toLowerCase() === spell.name.toLowerCase()
-      );
-  
-      if (!alreadyInUnknown) {
-        this.settings.unknownSpells.push({
-          ...spell,
-          isPrepared: false // Garante que ela não fique como preparada
-        });
-      }
-  
-      this.saveSettings();
-      new Notice(`Moved "${spell.name}" to Unknown Spells.`);
+    if (index === -1) {
+      console.error(`Spell with ID ${spellId} not found in known spells`);
+      new Notice('Spell not found!');
+      return;
     }
+
+    const spell = this.settings.knownSpells[index];
+    console.log(`Moving spell: ${spell.name}`); // Debug log
+
+    // Remove from known spells
+    this.settings.knownSpells.splice(index, 1);
+
+    // Check if already in unknown spells
+    const alreadyInUnknown = this.settings.unknownSpells.some(
+      s => s.name.toLowerCase() === spell.name.toLowerCase()
+    );
+
+    if (!alreadyInUnknown) {
+      // Add to unknown spells with new ID to avoid conflicts
+      this.settings.unknownSpells.push({
+        ...spell,
+        id: generateUniqueSpellId(), // NEW UNIQUE ID
+        isPrepared: false
+      });
+    }
+
+    this.saveSettings();
+    new Notice(`Moved "${spell.name}" to Unknown Spells.`);
+    
+    // Refresh all views
+    this.refreshAllViews();
   }
   
 
   toggleSpellPreparation(spellId: string) {
-    const spell = this.settings.knownSpells.find(s => s.id === spellId);
-    if (!spell) return;
+    console.log(`Toggling preparation for spell ID: ${spellId}`); // Debug log
+    
+    const spellIndex = this.settings.knownSpells.findIndex(s => s.id === spellId);
+    if (spellIndex === -1) {
+      console.error(`Spell with ID ${spellId} not found`);
+      new Notice('Spell not found!');
+      return;
+    }
+    
+    const spell = this.settings.knownSpells[spellIndex];
+    console.log(`Found spell: ${spell.name}, currently prepared: ${spell.isPrepared}`); // Debug log
     
     // If trying to prepare a spell (i.e., it is currently unprepared)
     if (!spell.isPrepared) {
@@ -1878,9 +1954,15 @@ new Notice(`Magia "${spell.name}" criada com sucesso.`);
       }
     }
     
-    // Toggle the spell's preparation state
-    spell.isPrepared = !spell.isPrepared;
+    // Toggle the spell's preparation state DIRETAMENTE no array
+    this.settings.knownSpells[spellIndex].isPrepared = !this.settings.knownSpells[spellIndex].isPrepared;
+    
+    console.log(`Spell ${spell.name} is now prepared: ${this.settings.knownSpells[spellIndex].isPrepared}`); // Debug log
+    
     this.saveSettings();
+    
+    // Refresh all open views
+    this.refreshAllViews();
   }
   
 
@@ -2034,7 +2116,7 @@ async importSpellsFromNotes(): Promise<number> {
 		}
   
 		this.settings.unknownSpells.push({
-		  id: Date.now().toString(),
+		  id: generateUniqueSpellId(),
 		  name: spellName,
 		  level: spellLevel,
 		  description: content,
