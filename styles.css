@@ -904,3 +904,19 @@ h2 {
   background-color: var(--background-primary);
   color: var(--text-normal);
 }
+
+.bonus-prepared-badge {
+  background: linear-gradient(135deg, #ffd700, #ffed4a);
+  border: 1px solid #f1c40f;
+  border-radius: 12px;
+  padding: 4px 8px;
+  margin: 4px 0;
+  display: inline-block;
+  font-size: 0.8em;
+}
+
+.bonus-badge-text {
+  color: #8b4513;
+  font-weight: bold;
+  text-shadow: 1px 1px 1px rgba(255,255,255,0.5);
+}

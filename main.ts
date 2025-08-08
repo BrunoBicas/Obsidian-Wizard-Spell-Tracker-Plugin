@@ -68,6 +68,37 @@ function generateUniqueSpellId(): string {
   return `spell_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 }
 
+function countNonBonusPreparedSpells(knownSpells: Spell[], bonusPreparedSpells: BonusPreparedSpell[], level?: number): number {
+  // Filtrar spells preparados por nível (se especificado)
+  let spellsToCount = knownSpells.filter(spell => {
+    if (level !== undefined && spell.level !== level) return false;
+    return spell.isPrepared;
+  });
+  
+  // Remover da contagem os que estão usando bônus ativo
+  const activeBonusSpells = bonusPreparedSpells
+    .filter(bonus => bonus.isActive)
+    .map(bonus => bonus.spellName.toLowerCase());
+  
+  spellsToCount = spellsToCount.filter(spell => 
+    !activeBonusSpells.includes(spell.name.toLowerCase())
+  );
+  
+  console.log(`📊 Contagem de spells preparados (nível ${level ?? 'todos'}):`, {
+    totalPrepared: knownSpells.filter(s => level === undefined ? s.isPrepared : (s.level === level && s.isPrepared)).length,
+    usingBonus: activeBonusSpells.length,
+    countingTowardLimit: spellsToCount.length
+  });
+  
+  return spellsToCount.length;
+}
+
+interface BonusPreparedSpell {
+  spellName: string;
+  source: string;
+  isActive: boolean; 
+}
+
 interface SpellBonuses {
   bonusCantrips?: number;
   bonusPreparedSpells?: number;
@@ -97,6 +128,7 @@ interface DnDSpellbookSettings {
   level8FolderPath: string;
   level9FolderPath: string;
   spellBonuses: SpellBonuses[];
+  bonusPreparedSpells: BonusPreparedSpell[];
 }
 
 interface Spell {
@@ -146,7 +178,8 @@ const DEFAULT_SETTINGS: DnDSpellbookSettings = {
   level8FolderPath: '',
   level9FolderPath: '',
   bonusSpellSlots: [],
-  spellBonuses: []
+  spellBonuses: [],
+  bonusPreparedSpells: []
 };
 
 // Function to calculate spell slots based on class and level
@@ -461,14 +494,25 @@ class SpellbookView extends ItemView {
 		// Spell Count Summary
 		const known = this.plugin.settings.knownSpells.length;
     const unknown = this.plugin.settings.unknownSpells.length;
-    const preparedCantrips = this.plugin.settings.knownSpells.filter(s => s.level === 0 && s.isPrepared).length; // MUDANÇA: só cantrips preparados
-    const preparedSpells = this.plugin.settings.knownSpells.filter(s => s.level > 0 && s.isPrepared).length;
+    const preparedCantrips = countNonBonusPreparedSpells(this.plugin.settings.knownSpells, this.plugin.settings.bonusPreparedSpells, 0 );    
+    const preparedSpells = countNonBonusPreparedSpells(this.plugin.settings.knownSpells.filter(s => s.level > 0), this.plugin.settings.bonusPreparedSpells);  
     const maxCantrips = getCantripsKnownCountWithBonus(this.plugin.settings.characterClass, this.plugin.settings.characterLevel, this.plugin.settings.spellBonuses);
     const maxPreparedSpells = getPreparedSpellsMaxCountWithBonus(this.plugin.settings.intelligenceModifier, this.plugin.settings.characterLevel, this.plugin.settings.spellBonuses);
+    const activeBonusCantrips = this.plugin.settings.bonusPreparedSpells.filter(
+        bonus => bonus.isActive && this.plugin.settings.knownSpells.some(
+          spell => spell.name.toLowerCase() === bonus.spellName.toLowerCase() && spell.level === 0
+        )
+    ).length;
+    const activeBonusSpells = this.plugin.settings.bonusPreparedSpells.filter(
+      bonus => bonus.isActive && this.plugin.settings.knownSpells.some(
+        spell => spell.name.toLowerCase() === bonus.spellName.toLowerCase() && spell.level > 0
+      )
+    ).length;
 
-		charInfoSection.createEl('p', {
-      text: `📘 Known: ${known} | ❓ Unknown: ${unknown} | Cantrips: ${preparedCantrips}/${maxCantrips} ✅ Prepared: ${preparedSpells}/${maxPreparedSpells}`
+    charInfoSection.createEl('p', {
+      text: `📘 Known: ${known} | ❓ Unknown: ${unknown} | Cantrips: ${preparedCantrips}/${maxCantrips} (+${activeBonusCantrips} bonus) ✅ Prepared: ${preparedSpells}/${maxPreparedSpells} (+${activeBonusSpells} bonus)`
     });
+
 	  
 		// Spell Slots Section
 		const spellSlotsSection = scrollContainer.createDiv({ cls: 'spell-slots-section' });
@@ -643,6 +687,20 @@ class SpellbookView extends ItemView {
 						cls: 'spell-name'
 					});
 
+          const bonusPrepared = this.plugin.settings.bonusPreparedSpells.find(
+            bonus => bonus.spellName.toLowerCase() === spell.name.toLowerCase() && bonus.isActive
+          );
+
+          if (bonusPrepared) {
+            // Adiciona um badge visual indicando que é bônus
+            const bonusBadge = spellDiv.createDiv({ cls: 'bonus-prepared-badge' });
+            bonusBadge.createEl('span', { 
+              text: `✨ Bonus from ${bonusPrepared.source}`,
+              cls: 'bonus-badge-text'
+            });
+            bonusBadge.setAttribute('title', `This spell is prepared as a bonus and doesn't count toward your limit`);
+          }
+                  
 					// Add extra spell uses badge if available
 					const extraUse = this.plugin.settings.extraSpellUses.find(
 						e => e.spellName.toLowerCase() === spell.name.toLowerCase() && e.usesRemaining > 0
@@ -1003,7 +1061,22 @@ class KnownSpellsView extends ItemView {
           text: spell.isPrepared ? '✅ Prepared' : '⏸ Unprepared',
           cls: `spell-status ${spell.isPrepared ? 'prepared' : 'unprepared'}`
         });
-        
+              
+        if (spell.isPrepared) {
+          const bonusPrepared = this.plugin.settings.bonusPreparedSpells.find(
+            bonus => bonus.spellName.toLowerCase() === spell.name.toLowerCase() && bonus.isActive
+          );
+
+          if (bonusPrepared) {
+            const bonusBadge = spellDiv.createDiv({ cls: 'bonus-prepared-badge' });
+            bonusBadge.createEl('span', { 
+              text: `✨ Bonus from ${bonusPrepared.source}`,
+              cls: 'bonus-badge-text'
+            });
+            bonusBadge.setAttribute('title', `This spell is prepared as a bonus and doesn't count toward your limit`);
+          }
+        }
+
         // Show extra uses badge if available
         const extraUse = this.plugin.settings.extraSpellUses.find(
           e => e.spellName.toLowerCase() === spell.name.toLowerCase() && e.usesRemaining > 0
@@ -1385,6 +1458,66 @@ export default class DnDSpellbookPlugin extends Plugin {
 	settings: DnDSpellbookSettings & {
     spellFolderPath?: string;
   };
+
+  async scanSpecificNoteForBonusPreparedSpells(file: TFile): Promise<BonusPreparedSpell[]> {
+    try {
+      const content = await this.app.vault.read(file);
+      
+      // Procura por frontmatter YAML
+      const yamlMatch = content.match(/^---\n([\s\S]*?)\n---/);
+      if (!yamlMatch) return [];
+      
+      const yamlContent = yamlMatch[1];
+      const foundSpells: BonusPreparedSpell[] = [];
+      
+      // Procura por diferentes formatos:
+      // bonus-prepared: ["Fireball", "Magic Missile"]
+      // bonus-prepared: Fireball
+      // bonus-prepared-spells: ["Shield", "Mage Armor"]
+      
+      const bonusPreparedMatch = yamlContent.match(/bonus[_-]?prepared[_-]?spells?\s*:\s*(.+)/i);
+      
+      if (bonusPreparedMatch) {
+        const spellsText = bonusPreparedMatch[1].trim();
+        let spellNames: string[] = [];
+        
+        // Se é uma lista [spell1, spell2]
+        if (spellsText.startsWith('[') && spellsText.endsWith(']')) {
+          const listContent = spellsText.slice(1, -1);
+          spellNames = listContent.split(',').map(s => s.trim().replace(/['"]/g, ''));
+        }
+        // Se é uma string simples
+        else {
+          spellNames = [spellsText.replace(/['"]/g, '')];
+        }
+        
+        // Remove bônus anteriores desta mesma nota
+        this.settings.bonusPreparedSpells = this.settings.bonusPreparedSpells.filter(
+          bonus => bonus.source !== file.basename
+        );
+        
+        // Adiciona os novos bônus
+        for (const spellName of spellNames) {
+          if (spellName.trim()) {
+            foundSpells.push({
+              spellName: spellName.trim(),
+              source: file.basename,
+              isActive: false
+            });
+          }
+        }
+        
+        this.settings.bonusPreparedSpells.push(...foundSpells);
+        await this.saveSettings();
+      }
+      
+      return foundSpells;
+      
+    } catch (error) {
+      console.error(`Erro lendo arquivo ${file.path}:`, error);
+      return [];
+    }
+  }
   
   async scanSpecificNoteForBonuses(file: TFile): Promise<SpellBonuses | null> {
     try {
@@ -1919,49 +2052,99 @@ new Notice(`Magia "${spell.name}" criada com sucesso.`);
   
 
   toggleSpellPreparation(spellId: string) {
-    console.log(`Toggling preparation for spell ID: ${spellId}`); // Debug log
+    console.log(`🔄 Toggling preparation for spell ID: ${spellId}`);
     
     const spellIndex = this.settings.knownSpells.findIndex(s => s.id === spellId);
     if (spellIndex === -1) {
-      console.error(`Spell with ID ${spellId} not found`);
+      console.error(`❌ Spell with ID ${spellId} not found`);
       new Notice('Spell not found!');
       return;
     }
     
     const spell = this.settings.knownSpells[spellIndex];
-    console.log(`Found spell: ${spell.name}, currently prepared: ${spell.isPrepared}`); // Debug log
+    console.log(`🎯 Found spell: "${spell.name}", currently prepared: ${spell.isPrepared}`);
     
-    // If trying to prepare a spell (i.e., it is currently unprepared)
+    // Verifica se esse spell tem um bônus de preparação disponível
+    const bonusPreparedSpell = this.settings.bonusPreparedSpells.find(
+      bonus => bonus.spellName.toLowerCase() === spell.name.toLowerCase()
+    );
+    
+    console.log(`🔍 Bônus encontrado para "${spell.name}":`, bonusPreparedSpell);
+    
+    // Se está tentando preparar um spell
     if (!spell.isPrepared) {
+      console.log(`➡️ Tentando preparar spell "${spell.name}"`);
+      
+      // Primeiro, tenta usar o bônus se disponível
+      if (bonusPreparedSpell && !bonusPreparedSpell.isActive) {
+        console.log(`✨ Usando bônus de ${bonusPreparedSpell.source} para ${spell.name}`);
+        bonusPreparedSpell.isActive = true;
+        this.settings.knownSpells[spellIndex].isPrepared = true;
+        this.saveSettings();
+        this.refreshAllViews();
+        new Notice(`✨ Prepared ${spell.name} using bonus from ${bonusPreparedSpell.source}!`);
+        return;
+      }
+      
+      // Se não tem bônus disponível, usa as regras normais COM CONTAGEM CORRETA
       if (spell.level === 0) {
-        // For cantrips (level 0), check against cantrip limit WITH bonuses
-        const preparedCantrips = this.settings.knownSpells.filter(s => s.level === 0 && s.isPrepared).length;
-        const maxCantrips = getCantripsKnownCountWithBonus(this.settings.characterClass, this.settings.characterLevel, this.settings.spellBonuses);
+        // Para cantrips - CONTA SÓ OS NÃO-BÔNUS
+        const preparedCantrips = countNonBonusPreparedSpells(
+          this.settings.knownSpells, 
+          this.settings.bonusPreparedSpells, 
+          0
+        );
+        const maxCantrips = getCantripsKnownCountWithBonus(
+          this.settings.characterClass, 
+          this.settings.characterLevel, 
+          this.settings.spellBonuses
+        );
+        
+        console.log(`🧮 Cantrips: ${preparedCantrips}/${maxCantrips}`);
         
         if (preparedCantrips >= maxCantrips) {
           new Notice(`You can only prepare ${maxCantrips} cantrips.`);
           return;
         }
       } else {
-        // For spells (level 1+), check against prepared spells limit WITH bonuses
-        const preparedSpells = this.settings.knownSpells.filter(s => s.level > 0 && s.isPrepared).length;
-        const maxPrepared = getPreparedSpellsMaxCountWithBonus(this.settings.intelligenceModifier, this.settings.characterLevel, this.settings.spellBonuses);
+        // Para spells nível 1+ - CONTA SÓ OS NÃO-BÔNUS
+        const preparedSpells = countNonBonusPreparedSpells(
+          this.settings.knownSpells.filter(s => s.level > 0), 
+          this.settings.bonusPreparedSpells
+        );
+        const maxPrepared = getPreparedSpellsMaxCountWithBonus(
+          this.settings.intelligenceModifier, 
+          this.settings.characterLevel, 
+          this.settings.spellBonuses
+        );
+        
+        console.log(`🧮 Spells: ${preparedSpells}/${maxPrepared}`);
         
         if (preparedSpells >= maxPrepared) {
           new Notice(`You can only prepare ${maxPrepared} spells.`);
           return;
         }
       }
+    } 
+    // Se está tentando despreparar um spell
+    else {
+      // Se este spell está usando um bônus, desativa o bônus
+      if (bonusPreparedSpell && bonusPreparedSpell.isActive) {
+        console.log(`🔻 Desativando bônus de ${bonusPreparedSpell.source} para ${spell.name}`);
+        bonusPreparedSpell.isActive = false;
+        this.settings.knownSpells[spellIndex].isPrepared = false;
+        this.saveSettings();
+        this.refreshAllViews();
+        new Notice(`Unprepared ${spell.name} (was using bonus from ${bonusPreparedSpell.source})`);
+        return;
+      }
     }
     
-    // Toggle the spell's preparation state DIRETAMENTE no array
+    // Toggle normal
     this.settings.knownSpells[spellIndex].isPrepared = !this.settings.knownSpells[spellIndex].isPrepared;
-    
-    console.log(`Spell ${spell.name} is now prepared: ${this.settings.knownSpells[spellIndex].isPrepared}`); // Debug log
+    console.log(`Spell ${spell.name} is now prepared: ${this.settings.knownSpells[spellIndex].isPrepared}`);
     
     this.saveSettings();
-    
-    // Refresh all open views
     this.refreshAllViews();
   }
   
@@ -2690,6 +2873,72 @@ new Setting(containerEl)
         }
       });
     });
+
+  containerEl.createEl('h3', { text: 'Bonus Prepared Spells (Specific)' });
+  containerEl.createEl('p', { text: 'Spells that can be prepared without counting toward limits' });
+
+  // Display existing bonus prepared spells
+  const bonusPreparedContainer = containerEl.createDiv({ cls: 'bonus-prepared-container' });
+  this.plugin.settings.bonusPreparedSpells.forEach((bonusSpell, index) => {
+    const bonusDiv = bonusPreparedContainer.createDiv({ cls: 'bonus-prepared-item' });
+    
+    const statusIcon = bonusSpell.isActive ? '✅' : '⭕';
+    const statusText = bonusSpell.isActive ? 'ACTIVE' : 'available';
+    
+    bonusDiv.createEl('span', { 
+      text: `${statusIcon} ${bonusSpell.spellName} (${bonusSpell.source}) - ${statusText}`
+    });
+    
+    const removeBtn = bonusDiv.createEl('button', {
+      text: 'Remove',
+      cls: 'remove-bonus-btn'
+    });
+    removeBtn.addEventListener('click', async () => {
+      // Se o spell estava ativo, despreparar ele primeiro
+      if (bonusSpell.isActive) {
+        const knownSpell = this.plugin.settings.knownSpells.find(
+          s => s.name.toLowerCase() === bonusSpell.spellName.toLowerCase()
+        );
+        if (knownSpell) {
+          knownSpell.isPrepared = false;
+        }
+      }
+      
+      this.plugin.settings.bonusPreparedSpells.splice(index, 1);
+      await this.plugin.saveSettings();
+      this.plugin.refreshAllViews();
+      this.display();
+    });
+  });
+
+  // Dropdown para selecionar nota específica para escanear
+  new Setting(containerEl)
+    .setName('Scan Note for Bonus Prepared Spells')
+    .setDesc('Select a note to scan for YAML with "bonus-prepared-spells" field')
+    .addDropdown(dropdown => {
+      dropdown.addOption('', 'Select a note...');
+      
+      const markdownFiles = this.app.vault.getMarkdownFiles();
+      markdownFiles.forEach(file => {
+        dropdown.addOption(file.path, file.basename);
+      });
+      
+      dropdown.onChange(async (selectedPath: string) => {
+        if (selectedPath) {
+          const file = this.app.vault.getAbstractFileByPath(selectedPath) as TFile;
+          if (file) {
+            const bonusSpells = await this.plugin.scanSpecificNoteForBonusPreparedSpells(file);
+            if (bonusSpells.length > 0) {
+              new Notice(`Found ${bonusSpells.length} bonus prepared spells in "${file.basename}"`);
+              this.display();
+            } else {
+              new Notice(`No bonus prepared spells found in "${file.basename}"`);
+            }
+          }
+        }
+      });
+    });
+
 	
 	new Setting(containerEl)
   .setName("Limpar magias desconhecidas aprendidas")
@@ -2752,8 +3001,15 @@ new Setting(containerEl)
     .setDesc(`Aqui você pode ver um resumo de seus truques e magias.`)
     .addTextArea(text => {
         // Calcula os totais
-        const preparedCantrips = this.plugin.settings.knownSpells.filter(s => s.level === 0 && s.isPrepared).length; // MUDANÇA: só cantrips preparados
-        const preparedSpells = this.plugin.settings.knownSpells.filter(s => s.level > 0 && s.isPrepared).length;
+        const preparedCantrips = countNonBonusPreparedSpells(
+          this.plugin.settings.knownSpells, 
+          this.plugin.settings.bonusPreparedSpells, 
+          0
+        );
+        const preparedSpells = countNonBonusPreparedSpells(
+          this.plugin.settings.knownSpells.filter(s => s.level > 0), 
+          this.plugin.settings.bonusPreparedSpells
+        );
         const maxCantrips = getCantripsKnownCountWithBonus(this.plugin.settings.characterClass, this.plugin.settings.characterLevel, this.plugin.settings.spellBonuses);
         const maxPreparedSpells = getPreparedSpellsMaxCountWithBonus(this.plugin.settings.intelligenceModifier, this.plugin.settings.characterLevel, this.plugin.settings.spellBonuses);
         // Define o valor e o placeholder da área de texto
