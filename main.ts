@@ -23,6 +23,12 @@ interface SpellSlot {
   autoScanned?: boolean; // Added for bonus slots auto-scan
 }
 
+interface BonusSpellSlotYAML {
+  level: number;
+  slots: number;
+  source: string;
+}
+
 
 const CANTRIPS_KNOWN_BY_CLASS_LEVEL: { [key: string]: { level: number; cantrips: number; }[] } = {
   'Wizard': [ { level: 1, cantrips: 3 }, { level: 4, cantrips: 4 }, { level: 10, cantrips: 5 } ],
@@ -1461,7 +1467,8 @@ export default class DnDSpellbookPlugin extends Plugin {
 
   async scanSpecificNoteForAllBonuses(file: TFile): Promise<{
     spellBonuses: SpellBonuses | null,
-    preparedBonuses: BonusPreparedSpell[]
+    preparedBonuses: BonusPreparedSpell[],
+    slotBonuses: SpellSlot[]
   }> {
     console.log(`🔍 Escaneando arquivo para TODOS os bônus: ${file.basename}`);
     
@@ -1473,7 +1480,7 @@ export default class DnDSpellbookPlugin extends Plugin {
       const yamlMatch = content.match(/^---\n([\s\S]*?)\n---/);
       if (!yamlMatch) {
         console.log("❌ Nenhum YAML frontmatter encontrado");
-        return { spellBonuses: null, preparedBonuses: [] };
+        return { spellBonuses: null, preparedBonuses: [], slotBonuses: [] };
       }
       
       const yamlContent = yamlMatch[1];
@@ -1481,7 +1488,8 @@ export default class DnDSpellbookPlugin extends Plugin {
       
       const result = {
         spellBonuses: null as SpellBonuses | null,
-        preparedBonuses: [] as BonusPreparedSpell[]
+        preparedBonuses: [] as BonusPreparedSpell[],
+        slotBonuses: [] as SpellSlot[]
       };
       
       // =====================================
@@ -1578,17 +1586,134 @@ export default class DnDSpellbookPlugin extends Plugin {
         this.settings.bonusPreparedSpells.push(...result.preparedBonuses);
       }
       
+      // ==========================================
+      // 🆕 SCAN PARA SPELL SLOTS BÔNUS VIA YAML
+      // ==========================================
+      
+      console.log("🔍 Procurando por spell slots bônus...");
+      
+      // Padrão 1: bonus_spell_slots: { level1: 2, level3: 1 }
+      const bonusSlotObjectMatch = yamlContent.match(/bonus[_-]?spell[_-]?slots?\s*:\s*\{([^}]+)\}/i);
+      if (bonusSlotObjectMatch) {
+        console.log("✅ Formato de objeto encontrado para spell slots");
+        const objectContent = bonusSlotObjectMatch[1];
+        console.log(`📋 Conteúdo do objeto: ${objectContent}`);
+        
+        // Remove bônus anteriores desta fonte
+        this.settings.bonusSpellSlots = this.settings.bonusSpellSlots.filter(
+          slot => slot.source !== file.basename
+        );
+        
+        // Parse das entradas level1: 2, level3: 1
+        const levelMatches = objectContent.matchAll(/level(\d+)\s*:\s*(\d+)/g);
+        for (const match of levelMatches) {
+          const level = parseInt(match[1]);
+          const slots = parseInt(match[2]);
+          
+          if (level >= 1 && level <= 9 && slots > 0) {
+            console.log(`➕ Adicionando ${slots} spell slots de nível ${level}`);
+            const newSlot: SpellSlot = {
+              level: level,
+              total: slots,
+              used: 0,
+              source: file.basename,
+              autoScanned: false // Marca como vindo do YAML, não do scan de tags
+            };
+            result.slotBonuses.push(newSlot);
+            this.settings.bonusSpellSlots.push(newSlot);
+          }
+        }
+      }
+      
+      // Padrão 2: bonus_spell_slots: [{ level: 1, slots: 2 }, { level: 3, slots: 1 }]
+      const bonusSlotArrayMatch = yamlContent.match(/bonus[_-]?spell[_-]?slots?\s*:\s*\[([^\]]+)\]/i);
+      if (bonusSlotArrayMatch && !bonusSlotObjectMatch) { // Só executa se não encontrou o formato objeto
+        console.log("✅ Formato de array encontrado para spell slots");
+        const arrayContent = bonusSlotArrayMatch[1];
+        console.log(`📋 Conteúdo do array: ${arrayContent}`);
+        
+        // Remove bônus anteriores desta fonte
+        this.settings.bonusSpellSlots = this.settings.bonusSpellSlots.filter(
+          slot => slot.source !== file.basename
+        );
+        
+        // Parse das entradas { level: 1, slots: 2 }
+        const itemMatches = arrayContent.matchAll(/\{\s*level\s*:\s*(\d+)\s*,\s*slots\s*:\s*(\d+)\s*\}/g);
+        for (const match of itemMatches) {
+          const level = parseInt(match[1]);
+          const slots = parseInt(match[2]);
+          
+          if (level >= 1 && level <= 9 && slots > 0) {
+            console.log(`➕ Adicionando ${slots} spell slots de nível ${level}`);
+            const newSlot: SpellSlot = {
+              level: level,
+              total: slots,
+              used: 0,
+              source: file.basename,
+              autoScanned: false
+            };
+            result.slotBonuses.push(newSlot);
+            this.settings.bonusSpellSlots.push(newSlot);
+          }
+        }
+      }
+      
+      // Padrão 3: Simples - level1_slots: 2, level3_slots: 1
+      if (!bonusSlotObjectMatch && !bonusSlotArrayMatch) {
+        console.log("🔍 Procurando por formato simples de spell slots");
+        
+        let foundSimpleSlots = false;
+        
+        for (let level = 1; level <= 9; level++) {
+          const patterns = [
+            new RegExp(`level${level}[_-]?slots?\\s*:\\s*(\\d+)`, 'i'),
+            new RegExp(`${level}[_-]?level[_-]?slots?\\s*:\\s*(\\d+)`, 'i'),
+            new RegExp(`spell[_-]?slot[_-]?${level}\\s*:\\s*(\\d+)`, 'i'),
+            new RegExp(`spell[_-]?slots?[_-]?level[_-]?${level}\\s*:\\s*(\\d+)`, 'i')
+          ];
+          
+          for (const pattern of patterns) {
+            const match = yamlContent.match(pattern);
+            if (match) {
+              const slots = parseInt(match[1]);
+              if (slots > 0) {
+                if (!foundSimpleSlots) {
+                  // Remove bônus anteriores desta fonte na primeira vez
+                  this.settings.bonusSpellSlots = this.settings.bonusSpellSlots.filter(
+                    slot => slot.source !== file.basename
+                  );
+                  foundSimpleSlots = true;
+                }
+                
+                console.log(`➕ Adicionando ${slots} spell slots de nível ${level} (formato simples)`);
+                const newSlot: SpellSlot = {
+                  level: level,
+                  total: slots,
+                  used: 0,
+                  source: file.basename,
+                  autoScanned: false
+                };
+                result.slotBonuses.push(newSlot);
+                this.settings.bonusSpellSlots.push(newSlot);
+                break; // Para de procurar outros padrões para este nível
+              }
+            }
+          }
+        }
+      }
+      
       await this.saveSettings();
       
       console.log(`✨ Resultados do scan:`);
       console.log(`- Bônus gerais:`, result.spellBonuses);
       console.log(`- Spells específicos:`, result.preparedBonuses);
+      console.log(`- Spell slots bônus:`, result.slotBonuses);
       
       return result;
       
     } catch (error) {
       console.error(`❌ Erro lendo arquivo ${file.path}:`, error);
-      return { spellBonuses: null, preparedBonuses: [] };
+      return { spellBonuses: null, preparedBonuses: [], slotBonuses: [] };
     }
   }
 
@@ -2350,7 +2475,7 @@ async importSpellsFromNotes(): Promise<number> {
     const newSlots = calculateSpellSlots(
       this.settings.characterClass, 
       this.settings.characterLevel,
-      this.settings.bonusSpellSlots
+      this.settings.bonusSpellSlots // Já inclui os slots do YAML
     );
     
     // Create a mapping of used slots from current settings
@@ -2398,80 +2523,145 @@ class SpellbookSettingTab extends PluginSettingTab {
   // Add this method to fix the first error
   getSourceName(bonus: SpellSlot): string {
     return bonus.source || "Unknown Source";
-}
+ }
 
-	display(): void {
-		const { containerEl } = this;
-		containerEl.empty();
+
+
+  display(): void {
+    const { containerEl } = this;
+    containerEl.empty();
+    
     containerEl.createEl('h3', { text: 'Bonus Spell Slots' });
-    containerEl.createEl('p', { text: 'Add extra spell slots from feats, magic items, or other sources' });
+    containerEl.createEl('p', { text: 'Extra spell slots from feats, magic items, YAML notes, or other sources' });
     const bonusContainer = containerEl.createDiv({ cls: 'bonus-slots-container' });
 
-// Display existing bonus slots
-this.plugin.settings.bonusSpellSlots.forEach((bonus, index) => {
-  const bonusDiv = bonusContainer.createDiv({ cls: 'bonus-slot-item' });
-  bonusDiv.createEl('span', { 
-    text: `Level ${bonus.level}: +${bonus.total} slots (${this.getSourceName(bonus)})`
-  });
-  
-  const removeBtn = bonusDiv.createEl('button', {
-    text: 'Remove',
-    cls: 'remove-bonus-btn'
-  });
-  removeBtn.addEventListener('click', async () => {
-    this.plugin.settings.bonusSpellSlots.splice(index, 1);
-    await this.plugin.saveSettings();
-    this.plugin.updateSpellSlots();
-    this.display(); // Refresh the settings page
-  });
-});
-new Setting(containerEl)
-  .setName('Scan for Bonus Spell Slots')
-  .setDesc('Scan notes for bonus spell slot tags (e.g., "#1_spellSlot_3") and update auto-scanned bonus slots.')
-  .addButton(button => button
-    .setButtonText('Scan Bonus Slots')
-    .onClick(async () => {
-      const count = await this.plugin.scanNotesForBonusSpellSlots();
-      new Notice(`Scanned and added bonus slots from ${count} tag occurrences.`);
-      this.display(); // Refresh the settings page
-    })
-  );
-new Setting(containerEl)
-  .setName('Add Bonus Spell Slot')
-  .addDropdown(dropdown => {
-    for (let i = 1; i <= 9; i++) {
-      dropdown.addOption(i.toString(), `Level ${i}`);
-    }
-    dropdown.setValue("1");
-    dropdown.selectEl.addClass('add-bonus-dropdown');
-    return dropdown;
-  })
-  .addText(text => {
-    text.setPlaceholder("Source (e.g., 'Ring of Spell Storing')");
-    text.inputEl.addClass('add-bonus-text');
-    return text;
-  })
-  .addButton(button => {
-    button.setButtonText('Add');
-    button.onClick(async () => {
-      const dropdownElement = document.querySelector('.add-bonus-dropdown') as HTMLSelectElement;
-      const level = parseInt(dropdownElement?.value || "1");
-      const textElement = document.querySelector('.add-bonus-text') as HTMLInputElement;
-      const source = textElement?.value || "Unknown Source";    
+    // Separa os slots por fonte
+    const slotsBySource: { [source: string]: SpellSlot[] } = {};
+    this.plugin.settings.bonusSpellSlots.forEach(slot => {
+      const source = slot.source || "Unknown Source";
+      if (!slotsBySource[source]) {
+        slotsBySource[source] = [];
+      }
+      slotsBySource[source].push(slot);
+    });
 
-      // Add new bonus slot
-      this.plugin.settings.bonusSpellSlots.push({
-        level,
-        total: 1,
-        used: 0,
-        source // Add a source property to track where the slot comes from
+    // Display existing bonus slots agrupados por fonte
+    Object.keys(slotsBySource).forEach(source => {
+      const sourceSlots = slotsBySource[source];
+      const sourceDiv = bonusContainer.createDiv({ cls: 'bonus-source-group' });
+      
+      // Header da fonte
+      const sourceHeader = sourceDiv.createDiv({ cls: 'bonus-source-header' });
+      sourceHeader.createEl('h4', { text: `${source}` });
+      
+      // Indica se veio de scan automático ou YAML
+      const isAutoScanned = sourceSlots.some(slot => slot.autoScanned);
+      const isYAML = !isAutoScanned && source !== "Unknown Source" && source !== "Test Button";
+      
+      if (isAutoScanned) {
+        sourceHeader.createEl('span', { text: ' (Auto-scanned from tags)', cls: 'source-type-badge' });
+      } else if (isYAML) {
+        sourceHeader.createEl('span', { text: ' (From YAML)', cls: 'source-type-badge yaml-badge' });
+      } else {
+        sourceHeader.createEl('span', { text: ' (Manual)', cls: 'source-type-badge manual-badge' });
+      }
+      
+      // Lista os slots desta fonte
+      sourceSlots.forEach((slot, slotIndex) => {
+        const slotDiv = sourceDiv.createDiv({ cls: 'bonus-slot-item' });
+        slotDiv.createEl('span', { 
+          text: `Level ${slot.level}: +${slot.total} slots`
+        });
+        
+        const removeBtn = slotDiv.createEl('button', {
+          text: 'Remove',
+          cls: 'remove-bonus-btn'
+        });
+        removeBtn.addEventListener('click', async () => {
+          // Remove este slot específico
+          const globalIndex = this.plugin.settings.bonusSpellSlots.findIndex(
+            s => s.level === slot.level && s.source === slot.source && s.total === slot.total
+          );
+          if (globalIndex !== -1) {
+            this.plugin.settings.bonusSpellSlots.splice(globalIndex, 1);
+            await this.plugin.saveSettings();
+            this.plugin.updateSpellSlots();
+            this.display(); // Refresh the settings page
+          }
+        });
       });
       
-      await this.plugin.saveSettings();
-      this.plugin.updateSpellSlots();
-      this.display(); // Refresh the settings page
+      // Botão para remover todos os slots desta fonte
+      if (sourceSlots.length > 1) {
+        const removeAllBtn = sourceDiv.createEl('button', {
+          text: `Remove All from ${source}`,
+          cls: 'remove-all-source-btn'
+        });
+        removeAllBtn.addEventListener('click', async () => {
+          if (confirm(`Remove all bonus spell slots from "${source}"?`)) {
+            this.plugin.settings.bonusSpellSlots = this.plugin.settings.bonusSpellSlots.filter(
+              slot => slot.source !== source
+            );
+            await this.plugin.saveSettings();
+            this.plugin.updateSpellSlots();
+            this.display();
+          }
+        });
+      }
     });
-  });
+
+    new Setting(containerEl)
+      .setName('Scan for Bonus Spell Slots (Tags)')
+      .setDesc('Scan notes for bonus spell slot tags (e.g., "#1_spellSlot_3") and update auto-scanned bonus slots.')
+      .addButton(button => button
+        .setButtonText('Scan Tags')
+        .onClick(async () => {
+          const count = await this.plugin.scanNotesForBonusSpellSlots();
+          new Notice(`Scanned and added bonus slots from ${count} tag occurrences.`);
+          this.display(); // Refresh the settings page
+        })
+      );
+
+    new Setting(containerEl)
+      .setName('Add Manual Bonus Spell Slot')
+      .setDesc('Manually add a bonus spell slot')
+      .addDropdown(dropdown => {
+        for (let i = 1; i <= 9; i++) {
+          dropdown.addOption(i.toString(), `Level ${i}`);
+        }
+        dropdown.setValue("1");
+        dropdown.selectEl.addClass('add-bonus-dropdown');
+        return dropdown;
+      })
+      .addText(text => {
+        text.setPlaceholder("Source (e.g., 'Ring of Spell Storing')");
+        text.inputEl.addClass('add-bonus-text');
+        return text;
+      })
+      .addButton(button => {
+        button.setButtonText('Add');
+        button.onClick(async () => {
+          const dropdownElement = document.querySelector('.add-bonus-dropdown') as HTMLSelectElement;
+          const level = parseInt(dropdownElement?.value || "1");
+          const textElement = document.querySelector('.add-bonus-text') as HTMLInputElement;
+          const source = textElement?.value || "Manual";    
+
+          // Add new bonus slot
+          this.plugin.settings.bonusSpellSlots.push({
+            level,
+            total: 1,
+            used: 0,
+            source,
+            autoScanned: false // Manual slots are not auto-scanned
+          });
+          
+          await this.plugin.saveSettings();
+          this.plugin.updateSpellSlots();
+          this.display(); // Refresh the settings page
+        });
+      });
+
+    
   
 		new Setting(containerEl)
 			.setName('Character Class')
@@ -2803,10 +2993,11 @@ new Setting(containerEl)
       text: `You currently know ${spellCount} spells and have ${preparedCount} prepared.` 
     });   
 
-    containerEl.createEl('h3', { text: 'Spell Bonuses from Notes' });
+    containerEl.createEl('h3', { text: 'Spell Bonuses from YAML Notes' });
     containerEl.createEl('p', { 
-      text: 'Scan notes for YAML that provides extra cantrips, prepared spells, and specific always-prepared spells' 
+      text: 'Scan notes for YAML that provides extra cantrips, prepared spells, spell slots, and specific always-prepared spells' 
     });
+
 
     // Display existing general bonuses
     const generalBonusContainer = containerEl.createDiv({ cls: 'general-bonus-container' });
@@ -2872,7 +3063,7 @@ new Setting(containerEl)
     // Dropdown unificado para escanear nota
     new Setting(containerEl)
       .setName('Scan Note for All Bonuses')
-      .setDesc('Select a note to scan for ALL types of spell bonuses (general limits and specific spells)')
+      .setDesc('Select a note to scan for ALL types of spell bonuses: general limits, specific spells, AND bonus spell slots')
       .addDropdown(dropdown => {
         dropdown.addOption('', 'Select a note...');
         
@@ -2888,19 +3079,35 @@ new Setting(containerEl)
               const result = await this.plugin.scanSpecificNoteForAllBonuses(file);
               
               let message = '';
+              let foundSomething = false;
+              
               if (result.spellBonuses) {
                 message += `Found general bonuses. `;
+                foundSomething = true;
               }
               if (result.preparedBonuses.length > 0) {
                 message += `Found ${result.preparedBonuses.length} specific prepared spells. `;
+                foundSomething = true;
               }
-              if (!result.spellBonuses && result.preparedBonuses.length === 0) {
+              if (result.slotBonuses.length > 0) {
+                const totalSlots = result.slotBonuses.reduce((sum, slot) => sum + slot.total, 0);
+                message += `Found ${totalSlots} bonus spell slots. `;
+                foundSomething = true;
+              }
+              
+              if (!foundSomething) {
                 message = `No bonuses found in "${file.basename}"`;
               } else {
                 message += `in "${file.basename}"`;
               }
               
               new Notice(message);
+              
+              // Update spell slots if any were found
+              if (result.slotBonuses.length > 0) {
+                this.plugin.updateSpellSlots();
+              }
+              
               this.display();
             }
           }
