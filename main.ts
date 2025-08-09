@@ -1459,114 +1459,139 @@ export default class DnDSpellbookPlugin extends Plugin {
     spellFolderPath?: string;
   };
 
-  async scanSpecificNoteForBonusPreparedSpells(file: TFile): Promise<BonusPreparedSpell[]> {
+  async scanSpecificNoteForAllBonuses(file: TFile): Promise<{
+    spellBonuses: SpellBonuses | null,
+    preparedBonuses: BonusPreparedSpell[]
+  }> {
+    console.log(`🔍 Escaneando arquivo para TODOS os bônus: ${file.basename}`);
+    
     try {
       const content = await this.app.vault.read(file);
+      console.log(`📄 Conteúdo do arquivo:\n${content.substring(0, 300)}...`);
       
       // Procura por frontmatter YAML
       const yamlMatch = content.match(/^---\n([\s\S]*?)\n---/);
-      if (!yamlMatch) return [];
+      if (!yamlMatch) {
+        console.log("❌ Nenhum YAML frontmatter encontrado");
+        return { spellBonuses: null, preparedBonuses: [] };
+      }
       
       const yamlContent = yamlMatch[1];
-      const foundSpells: BonusPreparedSpell[] = [];
+      console.log(`📋 YAML encontrado:\n${yamlContent}`);
       
-      // Procura por diferentes formatos:
-      // bonus-prepared: ["Fireball", "Magic Missile"]
-      // bonus-prepared: Fireball
-      // bonus-prepared-spells: ["Shield", "Mage Armor"]
+      const result = {
+        spellBonuses: null as SpellBonuses | null,
+        preparedBonuses: [] as BonusPreparedSpell[]
+      };
       
-      const bonusPreparedMatch = yamlContent.match(/bonus[_-]?prepared[_-]?spells?\s*:\s*(.+)/i);
+      // =====================================
+      // 🎯 SCAN PARA BÔNUS DE PREPARAÇÃO GERAL
+      // =====================================
       
-      if (bonusPreparedMatch) {
-        const spellsText = bonusPreparedMatch[1].trim();
+      const cantripBonusMatch = yamlContent.match(/bonus[_-]?cantrips?\s*:\s*(\d+)/i);
+      const preparedBonusMatch = yamlContent.match(/bonus[_-]?prepared[_-]?spells?\s*:\s*(\d+)/i);
+      
+      if (cantripBonusMatch || preparedBonusMatch) {
+        console.log("✅ Encontrados bônus gerais de preparação");
+        
+        result.spellBonuses = {};
+        
+        if (cantripBonusMatch) {
+          result.spellBonuses.bonusCantrips = parseInt(cantripBonusMatch[1]);
+          console.log(`🎪 Bônus cantrips: +${result.spellBonuses.bonusCantrips}`);
+        }
+        
+        if (preparedBonusMatch) {
+          result.spellBonuses.bonusPreparedSpells = parseInt(preparedBonusMatch[1]);
+          console.log(`📚 Bônus prepared spells: +${result.spellBonuses.bonusPreparedSpells}`);
+        }
+        
+        // Remove bônus anterior desta nota para spellBonuses
+        this.settings.spellBonuses = this.settings.spellBonuses.filter(
+          bonus => bonus.source !== file.basename
+        );
+        
+        // Adiciona o novo bônus geral
+        result.spellBonuses.source = file.basename;
+        this.settings.spellBonuses.push(result.spellBonuses);
+      }
+      
+      // ==========================================
+      // 🎯 SCAN PARA SPELLS PREPARADOS ESPECÍFICOS
+      // ==========================================
+      
+      // Procura por diferentes formatos de spells específicos
+      const specificSpellPatterns = [
+        /prepared[_-]?spells?\s*:\s*(.+)/i,
+        /specific[_-]?prepared\s*:\s*(.+)/i,
+        /always[_-]?prepared\s*:\s*(.+)/i,
+        /free[_-]?prepared\s*:\s*(.+)/i
+      ];
+      
+      let specificSpellMatch = null;
+      for (const pattern of specificSpellPatterns) {
+        specificSpellMatch = yamlContent.match(pattern);
+        if (specificSpellMatch) {
+          console.log(`✅ Padrão de spells específicos encontrado: ${pattern.source}`);
+          break;
+        }
+      }
+      
+      if (specificSpellMatch) {
+        const spellsText = specificSpellMatch[1].trim();
+        console.log(`🎯 Texto dos spells específicos: "${spellsText}"`);
+        
         let spellNames: string[] = [];
         
         // Se é uma lista [spell1, spell2]
         if (spellsText.startsWith('[') && spellsText.endsWith(']')) {
+          console.log("📝 Formato de lista detectado");
           const listContent = spellsText.slice(1, -1);
           spellNames = listContent.split(',').map(s => s.trim().replace(/['"]/g, ''));
         }
         // Se é uma string simples
         else {
+          console.log("📝 Formato de string simples detectado");
           spellNames = [spellsText.replace(/['"]/g, '')];
         }
         
-        // Remove bônus anteriores desta mesma nota
+        console.log(`🎪 Spells específicos extraídos:`, spellNames);
+        
+        // Remove bônus anteriores desta nota para bonusPreparedSpells
         this.settings.bonusPreparedSpells = this.settings.bonusPreparedSpells.filter(
           bonus => bonus.source !== file.basename
         );
         
-        // Adiciona os novos bônus
+        // Adiciona os novos spells específicos
         for (const spellName of spellNames) {
           if (spellName.trim()) {
-            foundSpells.push({
+            const newBonus = {
               spellName: spellName.trim(),
               source: file.basename,
               isActive: false
-            });
+            };
+            result.preparedBonuses.push(newBonus);
+            console.log(`➕ Adicionando spell específico: ${spellName.trim()} de ${file.basename}`);
           }
         }
         
-        this.settings.bonusPreparedSpells.push(...foundSpells);
-        await this.saveSettings();
+        this.settings.bonusPreparedSpells.push(...result.preparedBonuses);
       }
       
-      return foundSpells;
+      await this.saveSettings();
+      
+      console.log(`✨ Resultados do scan:`);
+      console.log(`- Bônus gerais:`, result.spellBonuses);
+      console.log(`- Spells específicos:`, result.preparedBonuses);
+      
+      return result;
       
     } catch (error) {
-      console.error(`Erro lendo arquivo ${file.path}:`, error);
-      return [];
+      console.error(`❌ Erro lendo arquivo ${file.path}:`, error);
+      return { spellBonuses: null, preparedBonuses: [] };
     }
   }
-  
-  async scanSpecificNoteForBonuses(file: TFile): Promise<SpellBonuses | null> {
-    try {
-      const content = await this.app.vault.read(file);
-      
-      // Procura por frontmatter YAML
-      const yamlMatch = content.match(/^---\n([\s\S]*?)\n---/);
-      if (!yamlMatch) return null;
-      
-      const yamlContent = yamlMatch[1];
-      
-      // Regex para encontrar spell bonuses no YAML
-      const cantripBonusMatch = yamlContent.match(/bonus[_-]?cantrips?\s*:\s*(\d+)/i);
-      const preparedBonusMatch = yamlContent.match(/bonus[_-]?prepared[_-]?spells?\s*:\s*(\d+)/i);
-      
-      let foundBonus = false;
-      const newBonus: SpellBonuses = {};
-      
-      if (cantripBonusMatch) {
-        newBonus.bonusCantrips = parseInt(cantripBonusMatch[1]);
-        foundBonus = true;
-      }
-      
-      if (preparedBonusMatch) {
-        newBonus.bonusPreparedSpells = parseInt(preparedBonusMatch[1]);
-        foundBonus = true;
-      }
-      
-      if (foundBonus) {
-        // Remove bônus anterior desta mesma nota se existir
-        this.settings.spellBonuses = this.settings.spellBonuses.filter(
-          bonus => bonus.source !== file.basename
-        );
-        
-        // Adiciona o novo bônus
-        newBonus.source = file.basename;
-        this.settings.spellBonuses.push(newBonus);
-        
-        await this.saveSettings();
-        return newBonus;
-      }
-      
-      return null;
-      
-    } catch (error) {
-      console.error(`Erro lendo arquivo ${file.path}:`, error);
-      return null;
-    }
-  }
+
   
     // Permitir que outro plugin adicione spell slots bônus
 	public addBonusSpellSlot(level: number, amount: number, source = "external") {
@@ -2778,13 +2803,17 @@ new Setting(containerEl)
       text: `You currently know ${spellCount} spells and have ${preparedCount} prepared.` 
     });   
 
-    containerEl.createEl('h3', { text: 'Spell Preparation Bonuses' });
-    containerEl.createEl('p', { text: 'Extra cantrips and prepared spells from feats, magic items, etc.' });
+    containerEl.createEl('h3', { text: 'Spell Bonuses from Notes' });
+    containerEl.createEl('p', { 
+      text: 'Scan notes for YAML that provides extra cantrips, prepared spells, and specific always-prepared spells' 
+    });
 
-    // Display existing bonuses
-    const bonusContainer2 = containerEl.createDiv({ cls: 'spell-bonuses-container' });
+    // Display existing general bonuses
+    const generalBonusContainer = containerEl.createDiv({ cls: 'general-bonus-container' });
+    generalBonusContainer.createEl('h4', { text: 'General Bonuses' });
+
     this.plugin.settings.spellBonuses.forEach((bonus, index) => {
-      const bonusDiv = bonusContainer2.createDiv({ cls: 'spell-bonus-item' });
+      const bonusDiv = generalBonusContainer.createDiv({ cls: 'bonus-item' });
       
       let bonusText = '';
       if (bonus.bonusCantrips) bonusText += `+${bonus.bonusCantrips} cantrips `;
@@ -2804,141 +2833,253 @@ new Setting(containerEl)
       });
     });
 
-    new Setting(containerEl)
-  .setName('Scan Specific Note for Bonuses')
-  .setDesc('Select a note to scan for YAML frontmatter with "bonus-cantrips" and "bonus-prepared-spells"')
-  .addDropdown(dropdown => {
-    dropdown.addOption('', 'Select a note...');
-    
-    // Pega todas as notas markdown
-    const markdownFiles = this.app.vault.getMarkdownFiles();
-    markdownFiles.forEach(file => {
-      dropdown.addOption(file.path, file.basename);
-    });
-    
-    dropdown.onChange(async (selectedPath: string) => {
-      if (selectedPath) {
-        const file = this.app.vault.getAbstractFileByPath(selectedPath) as TFile;
-        if (file) {
-          const bonus = await this.plugin.scanSpecificNoteForBonuses(file);
-          if (bonus) {
-            new Notice(`Found bonuses in "${file.basename}"`);
-            this.display();
-          } else {
-            new Notice(`No bonuses found in "${file.basename}"`);
+    // Display existing specific prepared spells
+    const specificBonusContainer = containerEl.createDiv({ cls: 'specific-bonus-container' });
+    specificBonusContainer.createEl('h4', { text: 'Specific Always-Prepared Spells' });
+
+    this.plugin.settings.bonusPreparedSpells.forEach((bonusSpell, index) => {
+      const bonusDiv = specificBonusContainer.createDiv({ cls: 'bonus-prepared-item' });
+      
+      const statusIcon = bonusSpell.isActive ? '✅' : '⭕';
+      const statusText = bonusSpell.isActive ? 'ACTIVE' : 'available';
+      
+      bonusDiv.createEl('span', { 
+        text: `${statusIcon} ${bonusSpell.spellName} (${bonusSpell.source}) - ${statusText}`
+      });
+      
+      const removeBtn = bonusDiv.createEl('button', {
+        text: 'Remove',
+        cls: 'remove-bonus-btn'
+      });
+      removeBtn.addEventListener('click', async () => {
+        // Se o spell estava ativo, despreparar ele primeiro
+        if (bonusSpell.isActive) {
+          const knownSpell = this.plugin.settings.knownSpells.find(
+            s => s.name.toLowerCase() === bonusSpell.spellName.toLowerCase()
+          );
+          if (knownSpell) {
+            knownSpell.isPrepared = false;
           }
         }
-      }
-    });
-  });
-
-  // Botão para adicionar bônus manual
-  new Setting(containerEl)
-    .setName('Add Manual Bonus')
-    .addText(text => {
-      text.setPlaceholder("Bonus cantrips (number)");
-      text.inputEl.addClass('bonus-cantrips-input');
-      return text;
-    })
-    .addText(text => {
-      text.setPlaceholder("Bonus prepared spells (number)");
-      text.inputEl.addClass('bonus-prepared-input');
-      return text;
-    })
-    .addText(text => {
-      text.setPlaceholder("Source name");
-      text.inputEl.addClass('bonus-source-input');
-      return text;
-    })
-    .addButton(button => {
-      button.setButtonText('Add');
-      button.onClick(async () => {
-        const cantripsInput = document.querySelector('.bonus-cantrips-input') as HTMLInputElement;
-        const preparedInput = document.querySelector('.bonus-prepared-input') as HTMLInputElement;
-        const sourceInput = document.querySelector('.bonus-source-input') as HTMLInputElement;
         
-        const bonusCantrips = parseInt(cantripsInput?.value || "0") || 0;
-        const bonusPrepared = parseInt(preparedInput?.value || "0") || 0;
-        const source = sourceInput?.value || "Manual";
-        
-        if (bonusCantrips > 0 || bonusPrepared > 0) {
-          this.plugin.settings.spellBonuses.push({
-            bonusCantrips: bonusCantrips > 0 ? bonusCantrips : undefined,
-            bonusPreparedSpells: bonusPrepared > 0 ? bonusPrepared : undefined,
-            source: source
-          });
-          
-          await this.plugin.saveSettings();
-          this.display();
-        }
+        this.plugin.settings.bonusPreparedSpells.splice(index, 1);
+        await this.plugin.saveSettings();
+        this.plugin.refreshAllViews();
+        this.display();
       });
     });
 
-  containerEl.createEl('h3', { text: 'Bonus Prepared Spells (Specific)' });
-  containerEl.createEl('p', { text: 'Spells that can be prepared without counting toward limits' });
-
-  // Display existing bonus prepared spells
-  const bonusPreparedContainer = containerEl.createDiv({ cls: 'bonus-prepared-container' });
-  this.plugin.settings.bonusPreparedSpells.forEach((bonusSpell, index) => {
-    const bonusDiv = bonusPreparedContainer.createDiv({ cls: 'bonus-prepared-item' });
-    
-    const statusIcon = bonusSpell.isActive ? '✅' : '⭕';
-    const statusText = bonusSpell.isActive ? 'ACTIVE' : 'available';
-    
-    bonusDiv.createEl('span', { 
-      text: `${statusIcon} ${bonusSpell.spellName} (${bonusSpell.source}) - ${statusText}`
-    });
-    
-    const removeBtn = bonusDiv.createEl('button', {
-      text: 'Remove',
-      cls: 'remove-bonus-btn'
-    });
-    removeBtn.addEventListener('click', async () => {
-      // Se o spell estava ativo, despreparar ele primeiro
-      if (bonusSpell.isActive) {
-        const knownSpell = this.plugin.settings.knownSpells.find(
-          s => s.name.toLowerCase() === bonusSpell.spellName.toLowerCase()
-        );
-        if (knownSpell) {
-          knownSpell.isPrepared = false;
-        }
-      }
-      
-      this.plugin.settings.bonusPreparedSpells.splice(index, 1);
-      await this.plugin.saveSettings();
-      this.plugin.refreshAllViews();
-      this.display();
-    });
-  });
-
-  // Dropdown para selecionar nota específica para escanear
-  new Setting(containerEl)
-    .setName('Scan Note for Bonus Prepared Spells')
-    .setDesc('Select a note to scan for YAML with "bonus-prepared-spells" field')
-    .addDropdown(dropdown => {
-      dropdown.addOption('', 'Select a note...');
-      
-      const markdownFiles = this.app.vault.getMarkdownFiles();
-      markdownFiles.forEach(file => {
-        dropdown.addOption(file.path, file.basename);
-      });
-      
-      dropdown.onChange(async (selectedPath: string) => {
-        if (selectedPath) {
-          const file = this.app.vault.getAbstractFileByPath(selectedPath) as TFile;
-          if (file) {
-            const bonusSpells = await this.plugin.scanSpecificNoteForBonusPreparedSpells(file);
-            if (bonusSpells.length > 0) {
-              new Notice(`Found ${bonusSpells.length} bonus prepared spells in "${file.basename}"`);
+    // Dropdown unificado para escanear nota
+    new Setting(containerEl)
+      .setName('Scan Note for All Bonuses')
+      .setDesc('Select a note to scan for ALL types of spell bonuses (general limits and specific spells)')
+      .addDropdown(dropdown => {
+        dropdown.addOption('', 'Select a note...');
+        
+        const markdownFiles = this.app.vault.getMarkdownFiles();
+        markdownFiles.forEach(file => {
+          dropdown.addOption(file.path, file.basename);
+        });
+        
+        dropdown.onChange(async (selectedPath: string) => {
+          if (selectedPath) {
+            const file = this.app.vault.getAbstractFileByPath(selectedPath) as TFile;
+            if (file) {
+              const result = await this.plugin.scanSpecificNoteForAllBonuses(file);
+              
+              let message = '';
+              if (result.spellBonuses) {
+                message += `Found general bonuses. `;
+              }
+              if (result.preparedBonuses.length > 0) {
+                message += `Found ${result.preparedBonuses.length} specific prepared spells. `;
+              }
+              if (!result.spellBonuses && result.preparedBonuses.length === 0) {
+                message = `No bonuses found in "${file.basename}"`;
+              } else {
+                message += `in "${file.basename}"`;
+              }
+              
+              new Notice(message);
               this.display();
-            } else {
-              new Notice(`No bonus prepared spells found in "${file.basename}"`);
             }
           }
-        }
+        });
       });
-    });
 
+    // ===============================================
+    // SEÇÃO DE ADICIONAR BÔNUS MANUAIS
+    // ===============================================
+
+    containerEl.createEl('h4', { text: 'Add Manual Bonuses' });
+
+    // Adicionar bônus gerais manuais
+    new Setting(containerEl)
+      .setName('Add General Bonus (Manual)')
+      .setDesc('Manually add bonus cantrips and/or prepared spells')
+      .addText(text => {
+        text.setPlaceholder("Bonus cantrips (number)");
+        text.inputEl.addClass('manual-bonus-cantrips-input');
+        return text;
+      })
+      .addText(text => {
+        text.setPlaceholder("Bonus prepared spells (number)");
+        text.inputEl.addClass('manual-bonus-prepared-input');
+        return text;
+      })
+      .addText(text => {
+        text.setPlaceholder("Source name");
+        text.inputEl.addClass('manual-bonus-source-input');
+        return text;
+      })
+      .addButton(button => {
+        button.setButtonText('Add General Bonus');
+        button.onClick(async () => {
+          const cantripsInput = document.querySelector('.manual-bonus-cantrips-input') as HTMLInputElement;
+          const preparedInput = document.querySelector('.manual-bonus-prepared-input') as HTMLInputElement;
+          const sourceInput = document.querySelector('.manual-bonus-source-input') as HTMLInputElement;
+          
+          const bonusCantrips = parseInt(cantripsInput?.value || "0") || 0;
+          const bonusPrepared = parseInt(preparedInput?.value || "0") || 0;
+          const source = sourceInput?.value || "Manual";
+          
+          if (bonusCantrips > 0 || bonusPrepared > 0) {
+            this.plugin.settings.spellBonuses.push({
+              bonusCantrips: bonusCantrips > 0 ? bonusCantrips : undefined,
+              bonusPreparedSpells: bonusPrepared > 0 ? bonusPrepared : undefined,
+              source: source
+            });
+            
+            await this.plugin.saveSettings();
+            
+            // Clear inputs
+            if (cantripsInput) cantripsInput.value = '';
+            if (preparedInput) preparedInput.value = '';
+            if (sourceInput) sourceInput.value = '';
+            
+            new Notice(`Added general bonus: +${bonusCantrips} cantrips, +${bonusPrepared} prepared spells`);
+            this.display();
+          } else {
+            new Notice('Please enter at least one bonus value');
+          }
+        });
+      });
+
+    // Adicionar spell específico manual
+    new Setting(containerEl)
+      .setName('Add Specific Prepared Spell (Manual)')
+      .setDesc('Manually add a specific spell that can always be prepared')
+      .addText(text => {
+        text.setPlaceholder("Spell name (e.g., Fireball)");
+        text.inputEl.addClass('manual-specific-spell-input');
+        return text;
+      })
+      .addText(text => {
+        text.setPlaceholder("Source name");
+        text.inputEl.addClass('manual-specific-source-input');
+        return text;
+      })
+      .addButton(button => {
+        button.setButtonText('Add Specific Spell');
+        button.onClick(async () => {
+          const spellInput = document.querySelector('.manual-specific-spell-input') as HTMLInputElement;
+          const sourceInput = document.querySelector('.manual-specific-source-input') as HTMLInputElement;
+          
+          const spellName = spellInput?.value?.trim() || '';
+          const source = sourceInput?.value?.trim() || 'Manual';
+          
+          if (spellName) {
+            // Check if this spell already exists from the same source
+            const existing = this.plugin.settings.bonusPreparedSpells.find(
+              bonus => bonus.spellName.toLowerCase() === spellName.toLowerCase() && bonus.source === source
+            );
+            
+            if (existing) {
+              new Notice(`"${spellName}" from "${source}" already exists`);
+              return;
+            }
+            
+            this.plugin.settings.bonusPreparedSpells.push({
+              spellName: spellName,
+              source: source,
+              isActive: false
+            });
+            
+            await this.plugin.saveSettings();
+            
+            // Clear inputs
+            if (spellInput) spellInput.value = '';
+            if (sourceInput) sourceInput.value = '';
+            
+            new Notice(`Added specific prepared spell: "${spellName}" from "${source}"`);
+            this.display();
+          } else {
+            new Notice('Please enter a spell name');
+          }
+        });
+      });
+
+    // Botão para adicionar múltiplos spells específicos de uma vez
+    new Setting(containerEl)
+      .setName('Add Multiple Specific Spells (Manual)')
+      .setDesc('Add multiple spells separated by commas')
+      .addTextArea(text => {
+        text.setPlaceholder("Spell names separated by commas\nExample: Shield, Mage Armor, Magic Missile");
+        text.inputEl.addClass('manual-multiple-spells-input');
+        text.inputEl.style.height = '60px';
+        return text;
+      })
+      .addText(text => {
+        text.setPlaceholder("Source name");
+        text.inputEl.addClass('manual-multiple-source-input');
+        return text;
+      })
+      .addButton(button => {
+        button.setButtonText('Add Multiple Spells');
+        button.onClick(async () => {
+          const spellsInput = document.querySelector('.manual-multiple-spells-input') as HTMLTextAreaElement;
+          const sourceInput = document.querySelector('.manual-multiple-source-input') as HTMLInputElement;
+          
+          const spellsText = spellsInput?.value?.trim() || '';
+          const source = sourceInput?.value?.trim() || 'Manual';
+          
+          if (spellsText) {
+            const spellNames = spellsText.split(',').map(s => s.trim()).filter(s => s);
+            let addedCount = 0;
+            
+            for (const spellName of spellNames) {
+              // Check if this spell already exists from the same source
+              const existing = this.plugin.settings.bonusPreparedSpells.find(
+                bonus => bonus.spellName.toLowerCase() === spellName.toLowerCase() && bonus.source === source
+              );
+              
+              if (!existing) {
+                this.plugin.settings.bonusPreparedSpells.push({
+                  spellName: spellName,
+                  source: source,
+                  isActive: false
+                });
+                addedCount++;
+              }
+            }
+            
+            if (addedCount > 0) {
+              await this.plugin.saveSettings();
+              
+              // Clear inputs
+              if (spellsInput) spellsInput.value = '';
+              if (sourceInput) sourceInput.value = '';
+              
+              new Notice(`Added ${addedCount} specific prepared spells from "${source}"`);
+              this.display();
+            } else {
+              new Notice('All spells already exist or no valid spells provided');
+            }
+          } else {
+            new Notice('Please enter at least one spell name');
+          }
+        });
+      });
 	
 	new Setting(containerEl)
   .setName("Limpar magias desconhecidas aprendidas")
